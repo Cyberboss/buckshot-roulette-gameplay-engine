@@ -1,4 +1,9 @@
-use crate::{multiplayer_count::MultiplayerCount, player::Player, player_number::PlayerNumber};
+use thiserror::Error;
+
+use crate::{
+    multiplayer_count::MultiplayerCount, player::Player, player_number::PlayerNumber,
+    round_number::RoundNumber,
+};
 
 #[derive(Debug, Clone)]
 struct ExtraPlayers {
@@ -11,6 +16,12 @@ pub struct GamePlayers {
     player_1: Player,
     player_2: Player,
     extra_players: Option<ExtraPlayers>,
+}
+
+#[derive(Error, Debug, Clone, Copy)]
+pub enum MissingPlayerError {
+    #[error("Requested player is not registered!")]
+    MissingPlayer,
 }
 
 impl GamePlayers {
@@ -58,5 +69,30 @@ impl GamePlayers {
         }
 
         vec
+    }
+
+    pub fn register_win(
+        &mut self,
+        player_number: PlayerNumber,
+        round_number: RoundNumber,
+    ) -> Result<(), MissingPlayerError> {
+        match player_number {
+            PlayerNumber::One => self.player_1.register_win(round_number),
+            PlayerNumber::Two => self.player_2.register_win(round_number),
+            PlayerNumber::Three | PlayerNumber::Four => match &mut self.extra_players {
+                Some(extra_players) => {
+                    if player_number == PlayerNumber::Three {
+                        extra_players.player_3.register_win(round_number);
+                    } else if let Some(player_4) = &mut extra_players.player_4 {
+                        player_4.register_win(round_number);
+                    } else {
+                        return Err(MissingPlayerError::MissingPlayer);
+                    }
+                }
+                None => return Err(MissingPlayerError::MissingPlayer),
+            },
+        };
+
+        Ok(())
     }
 }

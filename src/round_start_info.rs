@@ -6,7 +6,7 @@ use crate::player_number::PlayerNumber;
 
 #[derive(Debug, Clone)]
 pub struct RoundStartInfo {
-    max_health: u8,
+    max_health: i32,
     multiplayer: bool,
     starting_player: PlayerNumber,
 }
@@ -26,7 +26,7 @@ impl RoundStartInfo {
         }
     }
 
-    pub fn max_health(&self) -> u8 {
+    pub fn max_health(&self) -> i32 {
         self.max_health
     }
 

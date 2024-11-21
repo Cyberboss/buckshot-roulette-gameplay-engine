@@ -1,6 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RoundNumber {
-    RoundOne = 1,
-    RoundTwo = 2,
-    RoundThree = 3,
+    One = 1,
+    Two = 2,
+    Three = 3,
 }

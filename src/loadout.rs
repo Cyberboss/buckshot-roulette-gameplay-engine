@@ -3,13 +3,13 @@ use std::ops::Range;
 use rand::Rng;
 
 pub struct Loadout {
-    initial_blank_rounds: u8,
-    initial_live_rounds: u8,
-    new_items: u8,
+    pub initial_blank_rounds: usize,
+    pub initial_live_rounds: usize,
+    pub new_items: usize,
 }
 
 impl Loadout {
-    fn new<TRng>(rng: &mut TRng) -> Self
+    pub fn new<TRng>(rng: &mut TRng) -> Self
     where
         TRng: Rng,
     {

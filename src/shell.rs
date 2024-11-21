@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ShellType {
     Live,
     Blank,
@@ -17,5 +17,9 @@ impl Shell {
             ShellType::Live => self.0 = ShellType::Blank,
             ShellType::Blank => self.0 = ShellType::Live,
         }
+    }
+
+    pub fn fire(self) -> bool {
+        self.0 == ShellType::Live
     }
 }

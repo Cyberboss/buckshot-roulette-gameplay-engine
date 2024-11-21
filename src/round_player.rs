@@ -1,7 +1,10 @@
+use std::cmp::max;
+
 use thiserror::Error;
 
 use crate::{
-    item::Item, player::Player, player_number::PlayerNumber, round_start_info::RoundStartInfo,
+    item::Item, player::Player, player_number::PlayerNumber, round::ShotgunDamage,
+    round_start_info::RoundStartInfo, shell::Shell,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -22,7 +25,7 @@ pub enum AlreadyStunnedError {
 #[derive(Debug, Clone)]
 pub struct RoundPlayer {
     player_number: PlayerNumber,
-    health: u8,
+    health: i32,
     stun_state: StunState,
 }
 
@@ -39,12 +42,35 @@ impl RoundPlayer {
         self.player_number
     }
 
-    pub fn health(&self) -> u8 {
+    pub fn health(&self) -> i32 {
         self.health
     }
 
     pub fn stun_state(&self) -> StunState {
         self.stun_state
+    }
+
+    pub fn shoot(&mut self, shell: Shell, sawn: bool) -> ShotgunDamage {
+        let killed;
+        let damage;
+        let shotgun_damage = if shell.fire() {
+            if sawn {
+                damage = 2;
+                killed = damage > self.health;
+                ShotgunDamage::SawedShot(killed)
+            } else {
+                damage = 1;
+                killed = damage > self.health;
+                ShotgunDamage::RegularShot(killed)
+            }
+        } else {
+            damage = 0;
+            ShotgunDamage::Blank
+        };
+
+        self.health = max(0, self.health - damage);
+
+        shotgun_damage
     }
 
     pub fn stun(&mut self) -> Result<(), AlreadyStunnedError> {

@@ -1,14 +1,14 @@
-use rand::Rng;
-use thiserror::Error;
-
 use crate::{
     game_players::GamePlayers,
     multiplayer_count::MultiplayerCount,
     player_number::PlayerNumber,
-    round::{FinishedRoundOrRng, Round},
+    round::{FinishedRoundOrRng, Round, RoundContinuation, TurnSummary},
     round_number::RoundNumber,
     turn::{TakenTurn, Turn},
 };
+use anyhow::Result;
+use rand::Rng;
+use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct GameSession<TRng> {
@@ -44,7 +44,7 @@ where
         ));
 
         GameSession {
-            round_number: RoundNumber::RoundOne,
+            round_number: RoundNumber::One,
             players,
             multiplayer,
             round,
@@ -62,18 +62,43 @@ where
         }
     }
 
-    pub fn with_turn<F>(&mut self, func: F) -> Result<Option<PlayerNumber>, NoRoundError>
+    pub fn with_turn<TurnF, SummaryF, TRet>(
+        &mut self,
+        turn_func: TurnF,
+        summary_func: SummaryF,
+    ) -> Result<TRet>
     where
-        F: FnOnce(Turn) -> TakenTurn,
+        TurnF: FnOnce(Turn) -> TakenTurn,
+        SummaryF: FnOnce(&TurnSummary<TRng>) -> TRet,
     {
-        match &mut self.round {
-            Some(round) => match round.with_turn(func) {
-                Some(_finished_round) => {
-                    todo!("Handle finished round")
+        match self.round.take() {
+            Some(round) => {
+                let turn_summary = round.with_turn(turn_func);
+                let result = summary_func(&turn_summary);
+
+                match turn_summary.round_continuation {
+                    RoundContinuation::RoundContinues(continued_round) => {
+                        self.round = Some(continued_round.round)
+                    }
+                    RoundContinuation::RoundEnds(finished_round) => {
+                        self.players
+                            .register_win(finished_round.winner(), self.round_number)?;
+
+                        if self.round_number == RoundNumber::Three {
+                            self.round = None;
+                        } else {
+                            self.round = Some(Round::new(
+                                &self.players,
+                                self.multiplayer,
+                                FinishedRoundOrRng::FinishedRound(finished_round),
+                            ))
+                        }
+                    }
                 }
-                None => Ok(None),
-            },
-            None => Err(NoRoundError::NoRound),
+
+                Ok(result)
+            }
+            None => Err(NoRoundError::NoRound)?,
         }
     }
 
