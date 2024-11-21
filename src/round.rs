@@ -1,97 +1,167 @@
-use std::collections::VecDeque;
+use std::{borrow::BorrowMut, collections::VecDeque, iter::Filter, ops::IndexMut};
+
+use rand::Rng;
 
 use crate::{
     game_players::GamePlayers,
-    player,
     player_number::PlayerNumber,
     round_player::RoundPlayer,
     round_start_info::RoundStartInfo,
+    seat::Seat,
+    shell::Shell,
     turn::{TakenTurn, Turn},
 };
-
-#[derive(Debug, Clone, Copy)]
-pub enum Shell {
-    Live,
-    Blank,
-}
-
 #[derive(Debug, Clone)]
-pub struct Round {
-    turn_order: VecDeque<RoundPlayer>,
+pub struct Round<TRng> {
+    seats: Vec<Seat>,
     turn_order_reversed: bool,
+    active_seat_index: usize,
     first_dead_player: Option<PlayerNumber>,
     start_info: RoundStartInfo,
     shells: Vec<Shell>,
+    rng: TRng,
 }
 
-impl Round {
+#[derive(Debug, Clone)]
+pub struct FinishedRound<TRng> {
+    round: Round<TRng>,
+    first_dead_player: PlayerNumber,
+    winner: PlayerNumber,
+}
+
+#[derive(Debug, Clone)]
+pub enum FinishedRoundOrRng<TRng> {
+    FinishedRound(FinishedRound<TRng>),
+    Rng(TRng),
+}
+
+impl<TRng> FinishedRound<TRng> {
+    pub fn winner(&self) -> PlayerNumber {
+        self.winner
+    }
+}
+
+impl<'rng, TRng> Round<TRng>
+where
+    TRng: Rng,
+{
     pub fn new(
         game_players: &GamePlayers,
-        start_info: RoundStartInfo,
-        previous_round: Option<Round>,
+        multiplayer: bool,
+        round_or_rng: FinishedRoundOrRng<TRng>,
     ) -> Self {
         let turn_order_reversed;
-        let mut turn_order;
-        let first_dead_player;
+        let starting_player;
 
         let players = game_players.as_vec();
 
         let player_count = players.len();
         assert!(player_count != 0);
 
-        let round_players_iter = players
-            .iter()
-            .map(|player| RoundPlayer::new(player, &start_info));
-
-        match previous_round {
-            Some(previous_round) => {
-                turn_order_reversed = previous_round.turn_order_reversed;
-                first_dead_player = previous_round.first_dead_player;
+        let mut rng;
+        match round_or_rng {
+            FinishedRoundOrRng::FinishedRound(finished_round) => {
+                starting_player = finished_round.first_dead_player;
+                rng = finished_round.round.rng;
+                turn_order_reversed = finished_round.round.turn_order_reversed;
             }
-            None => {
+            FinishedRoundOrRng::Rng(inital_rng) => {
+                starting_player = PlayerNumber::One;
+                rng = inital_rng;
                 turn_order_reversed = false;
-                first_dead_player = None;
             }
         }
 
-        if turn_order_reversed {
-            turn_order = VecDeque::from_iter(round_players_iter.rev());
-        } else {
-            turn_order = VecDeque::from_iter(round_players_iter);
-        }
+        let start_info = RoundStartInfo::new(multiplayer, starting_player, &mut rng);
 
-        if let Some(first_dead_player) = first_dead_player {
-            while turn_order[0].player_number() != first_dead_player {
-                let moved_player = turn_order.pop_front();
-                turn_order.push_back(moved_player.unwrap());
-            }
-        }
+        let mut turn_index = 0;
 
-        let shells = start_info.generate_shells();
+        let seats: Vec<Seat> = players
+            .iter()
+            .enumerate()
+            .map(|(index, player)| {
+                if player.number() == starting_player {
+                    turn_index = index;
+                }
+                Seat::new(RoundPlayer::new(player, &start_info))
+            })
+            .collect();
 
-        Round {
+        let shells = Vec::with_capacity(8);
+
+        let mut round = Round {
             first_dead_player: None,
             turn_order_reversed,
-            turn_order,
+            seats,
             start_info,
             shells,
+            rng,
+            active_seat_index: turn_index,
+        };
+
+        round.new_loadout();
+
+        round
+    }
+
+    fn check_round_can_continue(&self) {
+        assert!(self.shells.len() == 0);
+        assert!(self.living_players().count() > 1);
+    }
+
+    fn new_loadout(&mut self) {
+        self.check_round_can_continue();
+    }
+
+    pub fn living_players(&self) -> impl Iterator<Item = &Seat> {
+        self.seats.iter().filter(|&seat| match seat.player() {
+            Some(_) => true,
+            None => false,
+        })
+    }
+
+    fn advance_seat_index(&mut self) {
+        let last_seat_index = self.seats.len() - 1;
+        if self.turn_order_reversed {
+            if self.active_seat_index == 0 {
+                self.active_seat_index = last_seat_index;
+            } else {
+                self.active_seat_index -= 1;
+            }
+        } else {
+            if self.active_seat_index == last_seat_index {
+                self.active_seat_index = 0;
+            } else {
+                self.active_seat_index += 1;
+            }
         }
     }
 
-    pub fn with_turn<F>(&mut self, func: F)
+    pub fn with_turn<F>(&mut self, func: F) -> Option<FinishedRound<TRng>>
     where
         F: FnOnce(Turn) -> TakenTurn,
     {
-        let player = self.turn_order.pop_front().unwrap();
-        let turn = Turn::new(&player);
-        let taken_turn = func(turn);
+        self.check_round_can_continue();
 
-        todo!("Handle taken turn");
-        self.turn_order.push_back(player);
+        loop {
+            let seat = self.seats.index_mut(self.active_seat_index);
 
-        while self.turn_order[0].unstun() {
-            let stunned_player = self.turn_order.pop_front().unwrap();
-            self.turn_order.push_back(stunned_player);
+            if let Some(took_turn) = seat.with_occupied(|occupied_seat| {
+                if !occupied_seat.player.update_stunned() {
+                    return false;
+                }
+
+                let turn = Turn::new(occupied_seat);
+
+                todo!("Turn taking");
+            }) {
+                if !took_turn {
+                    self.advance_seat_index();
+                    continue;
+                }
+
+                todo!("Handle finished round")
+            }
         }
     }
 }
