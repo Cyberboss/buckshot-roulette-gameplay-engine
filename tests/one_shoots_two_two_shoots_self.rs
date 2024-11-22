@@ -15,7 +15,6 @@ fn one_shoots_two_two_shoots_self() {
     play_round_one_shoots_two_two_shoots_self(&mut session, RoundNumber::Three);
 
     assert!(session.round().is_none());
-    panic!("Force quit")
 }
 
 fn play_round_one_shoots_two_two_shoots_self(
