@@ -1,7 +1,6 @@
 use crate::{
     game_players::GamePlayers,
     multiplayer_count::MultiplayerCount,
-    player_number::PlayerNumber,
     round::{FinishedRoundOrRng, Round, RoundContinuation, TurnSummary},
     round_number::RoundNumber,
     turn::{TakenTurn, Turn},
@@ -12,7 +11,6 @@ use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct GameSession<TRng> {
-    multiplayer: bool,
     round_number: RoundNumber,
     round: Option<Round<TRng>>,
     players: GamePlayers,
@@ -28,25 +26,13 @@ impl<TRng> GameSession<TRng>
 where
     TRng: Rng,
 {
-    pub fn new(multiplayer_option: Option<MultiplayerCount>, rng: TRng) -> Self {
-        let multiplayer;
-
-        match multiplayer_option {
-            Some(_) => multiplayer = true,
-            None => multiplayer = false,
-        }
-
-        let players = GamePlayers::new(multiplayer_option);
-        let round = Some(Round::new(
-            &players,
-            multiplayer,
-            FinishedRoundOrRng::Rng(rng),
-        ));
+    pub fn new(multiplayer_count: MultiplayerCount, rng: TRng) -> Self {
+        let players = GamePlayers::new(multiplayer_count);
+        let round = Some(Round::new(&players, FinishedRoundOrRng::Rng(rng)));
 
         GameSession {
             round_number: RoundNumber::One,
             players,
-            multiplayer,
             round,
         }
     }
@@ -89,7 +75,6 @@ where
                         } else {
                             self.round = Some(Round::new(
                                 &self.players,
-                                self.multiplayer,
                                 FinishedRoundOrRng::FinishedRound(finished_round),
                             ))
                         }
@@ -104,9 +89,5 @@ where
 
     pub fn players(&self) -> &GamePlayers {
         &self.players
-    }
-
-    pub fn next_player(&self) -> PlayerNumber {
-        todo!("Next player")
     }
 }

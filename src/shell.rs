@@ -4,6 +4,13 @@ pub enum ShellType {
     Blank,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ShotgunDamage {
+    Blank,
+    RegularShot(bool),
+    SawedShot(bool),
+}
+
 #[derive(Debug, Clone)]
 pub struct Shell(ShellType);
 
@@ -21,5 +28,9 @@ impl Shell {
 
     pub fn fire(self) -> bool {
         self.0 == ShellType::Live
+    }
+
+    pub fn shell_type(&self) -> ShellType {
+        self.0
     }
 }

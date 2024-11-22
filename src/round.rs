@@ -1,16 +1,16 @@
-use std::{borrow::BorrowMut, collections::VecDeque, iter::Filter, ops::IndexMut};
+use std::{collections::VecDeque, ops::IndexMut};
 
 use rand::Rng;
 
 use crate::{
     game_players::GamePlayers,
-    loadout::{self, Loadout},
+    loadout::Loadout,
     player_number::PlayerNumber,
     round_player::RoundPlayer,
     round_start_info::RoundStartInfo,
-    seat::{OccupiedSeat, Seat},
-    shell::{Shell, ShellType},
-    turn::{ShotgunTarget, TakenTurn, Turn},
+    seat::Seat,
+    shell::{Shell, ShellType, ShotgunDamage},
+    turn::{ItemUseResult, TakenTurn, TerminalAction, Turn},
 };
 #[derive(Debug, Clone)]
 pub struct Round<TRng> {
@@ -19,15 +19,8 @@ pub struct Round<TRng> {
     active_seat_index: usize,
     first_dead_player: Option<PlayerNumber>,
     start_info: RoundStartInfo,
-    shells: Vec<Shell>,
+    shells: VecDeque<Shell>,
     rng: TRng,
-}
-
-#[derive(Debug, Clone)]
-pub enum ShotgunDamage {
-    Blank,
-    RegularShot(bool),
-    SawedShot(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -84,11 +77,7 @@ impl<'rng, TRng> Round<TRng>
 where
     TRng: Rng,
 {
-    pub fn new(
-        game_players: &GamePlayers,
-        multiplayer: bool,
-        round_or_rng: FinishedRoundOrRng<TRng>,
-    ) -> Self {
+    pub fn new(game_players: &GamePlayers, round_or_rng: FinishedRoundOrRng<TRng>) -> Self {
         let turn_order_reversed;
         let starting_player;
 
@@ -111,7 +100,7 @@ where
             }
         }
 
-        let start_info = RoundStartInfo::new(multiplayer, starting_player, &mut rng);
+        let start_info = RoundStartInfo::new(starting_player, &mut rng);
 
         let mut turn_index = 0;
 
@@ -126,7 +115,7 @@ where
             })
             .collect();
 
-        let shells = Vec::with_capacity(8);
+        let shells = VecDeque::with_capacity(8);
 
         let mut round = Round {
             first_dead_player: None,
@@ -143,9 +132,21 @@ where
         round
     }
 
+    pub fn max_health(&self) -> i32 {
+        self.start_info.max_health()
+    }
+
     fn check_round_can_continue(&self) {
         assert!(self.shells.len() == 0);
-        assert!(self.living_players().count() > 1);
+        assert!(
+            self.living_players()
+                .map(|seat| {
+                    assert!(seat.player().unwrap().health() > 0);
+                    seat
+                })
+                .count()
+                > 1
+        );
     }
 
     fn new_loadout(&mut self) {
@@ -160,7 +161,7 @@ where
             .count();
 
         for seat in &mut self.seats {
-            seat.get_new_items(loadout.new_items, remaining_players);
+            seat.get_new_items(loadout.new_items, remaining_players, &mut self.rng);
         }
 
         let mut blanks_to_load = loadout.initial_blank_rounds;
@@ -169,19 +170,19 @@ where
         assert!(self.shells.len() == 0);
         while blanks_to_load > 0 && lives_to_load > 0 {
             if self.rng.gen_bool(0.5) {
-                self.shells.push(Shell::new(ShellType::Blank));
+                self.shells.push_back(Shell::new(ShellType::Blank));
                 blanks_to_load -= 1;
             } else {
-                self.shells.push(Shell::new(ShellType::Live));
+                self.shells.push_back(Shell::new(ShellType::Live));
                 lives_to_load -= 1;
             }
         }
 
         for _ in 0..blanks_to_load {
-            self.shells.push(Shell::new(ShellType::Blank));
+            self.shells.push_back(Shell::new(ShellType::Blank));
         }
         for _ in 0..lives_to_load {
-            self.shells.push(Shell::new(ShellType::Live));
+            self.shells.push_back(Shell::new(ShellType::Live));
         }
     }
 
@@ -190,6 +191,10 @@ where
             Some(_) => true,
             None => false,
         })
+    }
+
+    pub fn seats(&self) -> &Vec<Seat> {
+        &self.seats
     }
 
     fn advance_turn(&mut self) {
@@ -225,19 +230,35 @@ where
     {
         self.check_round_can_continue();
 
+        let other_seats = self
+            .seats
+            .iter()
+            .enumerate()
+            .filter_map(|(index, seat)| {
+                if index == self.active_seat_index {
+                    None
+                } else {
+                    Some(seat.create_view())
+                }
+            })
+            .collect();
+
         let seat = self.seats.index_mut(self.active_seat_index);
 
         let occupied_seat = seat.create_occupied_seat().unwrap();
-        let turn = Turn::new(occupied_seat, &mut self.shells);
+        let turn = Turn::new(occupied_seat, other_seats, &mut self.shells);
 
         let taken_turn = func(turn);
 
-        self.handle_taken_turn(taken_turn)
-    }
+        if taken_turn.turn_order_inverted {
+            self.turn_order_reversed = !self.turn_order_reversed;
+        }
 
-    fn handle_taken_turn(mut self, taken_turn: TakenTurn) -> TurnSummary<TRng> {
-        match taken_turn.target {
-            ShotgunTarget::RackedEmpty => {
+        match taken_turn.action {
+            TerminalAction::Item(item_use_result) => {
+                // need to handle other cases
+                assert!(item_use_result == ItemUseResult::ShotgunRackedEmpty);
+
                 self.new_loadout();
 
                 TurnSummary {
@@ -245,8 +266,8 @@ where
                     round_continuation: self.continue_round(),
                 }
             }
-            ShotgunTarget::Shot(target_player_number) => {
-                let shell = self.shells.pop().unwrap();
+            TerminalAction::Shot(target_player_number) => {
+                let shell = self.shells.pop_front().unwrap();
 
                 let target_seat_index = match target_player_number {
                     PlayerNumber::One => 0,
@@ -255,13 +276,23 @@ where
                     PlayerNumber::Four => 3,
                 };
 
-                let target_seat = self
-                    .seats
-                    .index_mut(target_seat_index)
-                    .create_occupied_seat()
-                    .unwrap();
+                let target_seat = self.seats.index_mut(target_seat_index);
 
-                let shotgun_damage = target_seat.player.shoot(shell, taken_turn.sawn);
+                let mut occupied_seat = target_seat.create_occupied_seat().unwrap();
+
+                let shotgun_damage = occupied_seat.shoot(shell, taken_turn.sawn);
+                match shotgun_damage {
+                    ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => {
+                        if killed {
+                            if self.first_dead_player.is_none() {
+                                self.first_dead_player = Some(occupied_seat.player.player_number());
+                            }
+
+                            target_seat.empty_dead_body()
+                        }
+                    }
+                    ShotgunDamage::Blank => {}
+                }
 
                 TurnSummary {
                     shot_result: Some(ShotResult {

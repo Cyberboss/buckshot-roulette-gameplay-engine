@@ -7,12 +7,11 @@ use crate::player_number::PlayerNumber;
 #[derive(Debug, Clone)]
 pub struct RoundStartInfo {
     max_health: i32,
-    multiplayer: bool,
     starting_player: PlayerNumber,
 }
 
 impl RoundStartInfo {
-    pub fn new<TRng>(multiplayer: bool, starting_player: PlayerNumber, rng: &mut TRng) -> Self
+    pub fn new<TRng>(starting_player: PlayerNumber, rng: &mut TRng) -> Self
     where
         TRng: Rng,
     {
@@ -21,7 +20,6 @@ impl RoundStartInfo {
 
         RoundStartInfo {
             max_health,
-            multiplayer,
             starting_player,
         }
     }

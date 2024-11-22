@@ -2,10 +2,7 @@ use std::cmp::max;
 
 use thiserror::Error;
 
-use crate::{
-    item::Item, player::Player, player_number::PlayerNumber, round::ShotgunDamage,
-    round_start_info::RoundStartInfo, shell::Shell,
-};
+use crate::{player::Player, player_number::PlayerNumber, round_start_info::RoundStartInfo};
 
 #[derive(Debug, Clone, Copy)]
 pub enum StunState {
@@ -26,14 +23,17 @@ pub enum AlreadyStunnedError {
 pub struct RoundPlayer {
     player_number: PlayerNumber,
     health: i32,
+    max_health: i32,
     stun_state: StunState,
 }
 
 impl RoundPlayer {
     pub fn new(player: &Player, round_start_info: &RoundStartInfo) -> Self {
+        let max_health = round_start_info.max_health();
         RoundPlayer {
             player_number: player.number(),
-            health: round_start_info.max_health(),
+            health: max_health,
+            max_health,
             stun_state: StunState::Unstunned,
         }
     }
@@ -50,27 +50,16 @@ impl RoundPlayer {
         self.stun_state
     }
 
-    pub fn shoot(&mut self, shell: Shell, sawn: bool) -> ShotgunDamage {
-        let killed;
-        let damage;
-        let shotgun_damage = if shell.fire() {
-            if sawn {
-                damage = 2;
-                killed = damage > self.health;
-                ShotgunDamage::SawedShot(killed)
-            } else {
-                damage = 1;
-                killed = damage > self.health;
-                ShotgunDamage::RegularShot(killed)
-            }
-        } else {
-            damage = 0;
-            ShotgunDamage::Blank
-        };
+    pub fn take_damage(&mut self, sawn: bool) -> bool {
+        let damage = if sawn { 2 } else { 1 };
 
         self.health = max(0, self.health - damage);
 
-        shotgun_damage
+        self.health == 0
+    }
+
+    pub fn gain_health(&mut self, amount: u8) {
+        self.health = max(self.max_health, self.health + i32::from(amount));
     }
 
     pub fn stun(&mut self) -> Result<(), AlreadyStunnedError> {

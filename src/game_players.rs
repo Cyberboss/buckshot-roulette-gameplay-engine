@@ -25,29 +25,24 @@ pub enum MissingPlayerError {
 }
 
 impl GamePlayers {
-    pub fn new(multiplayer_option: Option<MultiplayerCount>) -> Self {
+    pub fn new(multiplayer_count: MultiplayerCount) -> Self {
         let player_1 = Player::new(PlayerNumber::One);
         let player_2 = Player::new(PlayerNumber::Two);
-        let extra_players;
+        let extra_players = match multiplayer_count {
+            MultiplayerCount::Two => None,
+            MultiplayerCount::Three | MultiplayerCount::Four => {
+                let player_4 = if multiplayer_count == MultiplayerCount::Four {
+                    Some(Player::new(PlayerNumber::Four))
+                } else {
+                    None
+                };
 
-        match multiplayer_option {
-            Some(player_count) => match player_count {
-                MultiplayerCount::Two => extra_players = None,
-                MultiplayerCount::Three | MultiplayerCount::Four => {
-                    let player_4 = if player_count == MultiplayerCount::Four {
-                        Some(Player::new(PlayerNumber::Four))
-                    } else {
-                        None
-                    };
-
-                    extra_players = Some(ExtraPlayers {
-                        player_3: Player::new(PlayerNumber::Three),
-                        player_4,
-                    });
-                }
-            },
-            None => extra_players = None,
-        }
+                Some(ExtraPlayers {
+                    player_3: Player::new(PlayerNumber::Three),
+                    player_4,
+                })
+            }
+        };
 
         GamePlayers {
             player_1,
