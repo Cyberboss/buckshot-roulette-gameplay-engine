@@ -1,14 +1,14 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod game_players;
+pub mod game_session;
+mod item;
+mod loadout;
+mod multiplayer_count;
+mod player;
+mod player_number;
+mod round;
+mod round_number;
+mod round_player;
+mod round_start_info;
+mod seat;
+mod shell;
+mod turn;
