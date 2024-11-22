@@ -169,13 +169,13 @@ fn add_item_to_pool_checked<F>(
 {
     let player_item_limit = player_item_limit(item);
     let current_count = player_item_counts.get(&item);
-    if player_item_limit >= *current_count.unwrap() {
+    if player_item_limit <= *current_count.unwrap() {
         return;
     }
 
     let global_item_limit = global_item_limit(item);
     let global_count = current_table_item_counts.get(&item);
-    if global_item_limit >= *global_count.unwrap() {
+    if global_item_limit <= *global_count.unwrap() {
         return;
     }
 
