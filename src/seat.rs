@@ -1,9 +1,9 @@
-use std::{cmp::min, ops::Range};
+use std::{collections::HashMap, ops::Range};
 
 use rand::Rng;
 
 use crate::{
-    item::{Item, NotAdreneline, UnaryItem},
+    item::{initialize_item_count_map, Item, NotAdreneline, UnaryItem},
     player_number::PlayerNumber,
     round_player::{RoundPlayer, StunState},
     shell::{Shell, ShotgunDamage},
@@ -85,40 +85,48 @@ impl Seat {
         }
     }
 
-    pub fn get_new_items<TRng>(
+    pub fn get_new_item<TRng>(
         &mut self,
-        items_to_get: usize,
         remaining_players: usize,
+        current_table_item_counts: &HashMap<Item, usize>,
         rng: &mut TRng,
-    ) where
-        TRng: Rng,
-    {
-        let allowed_items = min(items_to_get, MAX_ITEMS - self.items.len());
-
-        for _ in 0..allowed_items {
-            self.get_item(remaining_players, rng);
-        }
-    }
-
-    fn get_item<TRng>(&mut self, remaining_players: usize, rng: &mut TRng)
+    ) -> Option<Item>
     where
         TRng: Rng,
     {
-        let mut item_pool = Vec::with_capacity(8);
-        if remaining_players > 2 {
-            item_pool.push(Item::NotAdreneline(NotAdreneline::UnaryItem(
-                UnaryItem::Remote,
-            )));
+        if self.player.is_none() {
+            return None;
         }
+
+        let mut item_pool = Vec::with_capacity(current_table_item_counts.len());
+
+        let mut player_item_counts = initialize_item_count_map();
+        self.items.iter().for_each(|item| {
+            let count = player_item_counts.get_mut(item).unwrap();
+            *count += 1;
+        });
+
+        current_table_item_counts.keys().for_each(|item| {
+            add_item_to_pool_checked(
+                &mut item_pool,
+                *item,
+                current_table_item_counts,
+                &mut player_item_counts,
+                || {
+                    *item != Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Remote))
+                        || remaining_players > 2
+                },
+            )
+        });
 
         let index = rng.gen_range(Range {
             start: 0,
             end: item_pool.len(),
         });
 
-        self.items.push(item_pool[index]);
-
-        todo!("Finish item pool");
+        let item = item_pool[index];
+        self.items.push(item);
+        Some(item)
     }
 }
 
@@ -134,5 +142,66 @@ impl<'seat> OccupiedSeat<'seat> {
         } else {
             ShotgunDamage::Blank
         }
+    }
+}
+
+fn global_item_limit(item: Item) -> usize {
+    match item {
+        Item::NotAdreneline(not_adreneline) => match not_adreneline {
+            NotAdreneline::UnaryItem(unary_item) => match unary_item {
+                UnaryItem::Remote => 2,
+                UnaryItem::Phone
+                | UnaryItem::Inverter
+                | UnaryItem::MagnifyingGlass
+                | UnaryItem::Cigarettes
+                | UnaryItem::Handsaw
+                | UnaryItem::Beer => 32,
+            },
+            NotAdreneline::Jammer => 1,
+        },
+        Item::Adreneline => 32,
+    }
+}
+
+fn add_item_to_pool_checked<F>(
+    pool: &mut Vec<Item>,
+    item: Item,
+    current_table_item_counts: &HashMap<Item, usize>,
+    player_item_counts: &mut HashMap<Item, usize>,
+    additional_check: F,
+) where
+    F: FnOnce() -> bool,
+{
+    let player_item_limit = player_item_limit(item);
+    let current_count = player_item_counts.get(&item);
+    if player_item_limit >= *current_count.unwrap() {
+        return;
+    }
+
+    let global_item_limit = global_item_limit(item);
+    let global_count = current_table_item_counts.get(&item);
+    if global_item_limit >= *global_count.unwrap() {
+        return;
+    }
+
+    if !additional_check() {
+        return;
+    }
+
+    pool.push(item);
+}
+
+fn player_item_limit(item: Item) -> usize {
+    match item {
+        Item::NotAdreneline(not_adreneline) => match not_adreneline {
+            NotAdreneline::UnaryItem(unary_item) => match unary_item {
+                UnaryItem::Remote | UnaryItem::Cigarettes => 1,
+                UnaryItem::MagnifyingGlass | UnaryItem::Handsaw => 2,
+                UnaryItem::Inverter => 4,
+                UnaryItem::Phone | UnaryItem::Beer => 8,
+            },
+            NotAdreneline::Jammer => 1,
+        },
+        Item::Adreneline => 4,
     }
 }

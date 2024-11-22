@@ -358,7 +358,7 @@ impl<'turn> TurnOwnedData<'turn> {
             UnaryItem::Inverter => self.shells[0].invert(),
             UnaryItem::MagnifyingGlass => use_result = learn_shell(self.shells, 0),
             UnaryItem::Cigarettes => self.occupied_seat.player.gain_health(1),
-            UnaryItem::Knife => {
+            UnaryItem::Handsaw => {
                 if self.sawn {
                     return Err(InvalidItemUseError::DoubleSaw);
                 }

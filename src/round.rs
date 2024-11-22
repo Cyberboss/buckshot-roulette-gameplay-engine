@@ -4,6 +4,7 @@ use rand::Rng;
 
 use crate::{
     game_players::GamePlayers,
+    item::initialize_item_count_map,
     loadout::Loadout,
     player_number::PlayerNumber,
     round_player::RoundPlayer,
@@ -100,7 +101,8 @@ where
             }
         }
 
-        let start_info = RoundStartInfo::new(starting_player, &mut rng);
+        let start_info =
+            RoundStartInfo::new(starting_player, game_players.multiplayer_count, &mut rng);
 
         let mut turn_index = 0;
 
@@ -160,8 +162,24 @@ where
             .filter(|seat| seat.player().is_some())
             .count();
 
-        for seat in &mut self.seats {
-            seat.get_new_items(loadout.new_items, remaining_players, &mut self.rng);
+        let mut global_item_counts = initialize_item_count_map();
+        for seat in &self.seats {
+            for item in seat.items() {
+                let count = global_item_counts.get_mut(item).unwrap();
+                *count += 1
+            }
+        }
+
+        // round robin because of global item limits
+        for _ in 0..loadout.new_items {
+            for seat in &mut self.seats {
+                if let Some(added_item) =
+                    seat.get_new_item(remaining_players, &global_item_counts, &mut self.rng)
+                {
+                    let count = global_item_counts.get_mut(&added_item).unwrap();
+                    *count += 1
+                }
+            }
         }
 
         let mut blanks_to_load = loadout.initial_blank_rounds;

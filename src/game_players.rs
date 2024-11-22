@@ -16,6 +16,7 @@ pub struct GamePlayers {
     player_1: Player,
     player_2: Player,
     extra_players: Option<ExtraPlayers>,
+    pub multiplayer_count: MultiplayerCount,
 }
 
 #[derive(Error, Debug, Clone, Copy)]
@@ -48,6 +49,7 @@ impl GamePlayers {
             player_1,
             player_2,
             extra_players,
+            multiplayer_count,
         }
     }
 
