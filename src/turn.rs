@@ -109,7 +109,7 @@ impl<'turn, TRng> ContinuedTurn<'turn, TRng> {
 impl ItemUseResult {
     fn is_terminal(&self) -> bool {
         match self {
-            ItemUseResult::ShotgunRackedEmpty => true,
+            ItemUseResult::ShotgunRacked(rack_result) => rack_result.empty,
             ItemUseResult::Default
             | ItemUseResult::LearnedShell(_)
             | ItemUseResult::StunnedPlayer(_) => false,
@@ -388,11 +388,12 @@ where
                 self.sawn = true;
             }
             UnaryItem::Beer => {
-                self.shells.pop_front();
+                let ejected_shell = self.shells.pop_front().unwrap();
 
-                if self.shells.is_empty() {
-                    use_result = Some(ItemUseResult::ShotgunRackedEmpty);
-                }
+                use_result = Some(ItemUseResult::ShotgunRacked(ShotgunRackResult {
+                    empty: self.shells.is_empty(),
+                    ejected_shell_type: ejected_shell.shell_type(),
+                }));
             }
         }
 
