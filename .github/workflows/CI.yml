@@ -63,6 +63,4 @@ jobs:
 
       - name: Deploy to crates.io
         if: steps.get-tag.outputs.deploy_tag != 'FAILED'
-        uses: katyo/publish-crates@v2
-        with:
-          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
