@@ -94,7 +94,7 @@ fn test_phone() {
                                 assert!(shell_count > 2);
                                 assert!(learned_shell.relative_index > 1)
                             }
-                            ItemUseResult::ShotgunRackedEmpty | ItemUseResult::StunnedPlayer(_) => {
+                            ItemUseResult::ShotgunRacked(_) | ItemUseResult::StunnedPlayer(_) => {
                                 panic!("Should be impossible with phone")
                             }
                         },
@@ -105,6 +105,40 @@ fn test_phone() {
                 }
                 TakenAction::Terminal(_) => {
                     panic!("Phone shouldn't be a terminal action")
+                }
+            }
+        },
+    );
+}
+
+#[test]
+fn test_beer() {
+    item_test_core(
+        Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Beer)),
+        42,
+        |turn, player_to_shoot| {
+            let shell_count = turn.shell_count();
+            let item_use = turn.use_unary_item(UnaryItem::Beer);
+            match item_use {
+                TakenAction::Continued(continued_turn) => {
+                    match continued_turn.item_result() {
+                        Ok(use_result) => match use_result {
+                            ItemUseResult::ShotgunRacked(rack_result) => {
+                                assert!(rack_result.empty == (shell_count == 1));
+                            }
+                            ItemUseResult::Default
+                            | ItemUseResult::LearnedShell(_)
+                            | ItemUseResult::StunnedPlayer(_) => {
+                                panic!("Shouldn't be possible with beer")
+                            }
+                        },
+                        Err(_) => panic!("Beer should never have a bad use result"),
+                    }
+
+                    continued_turn.next_action().shoot(player_to_shoot)
+                }
+                TakenAction::Terminal(_) => {
+                    panic!("Beer shouldn't be a terminal action")
                 }
             }
         },
