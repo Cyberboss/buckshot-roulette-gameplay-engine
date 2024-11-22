@@ -1,5 +1,6 @@
-use std::{collections::HashMap, ops::Range};
+use std::ops::Range;
 
+use indexmap::IndexMap;
 use rand::Rng;
 
 use crate::{
@@ -86,7 +87,7 @@ impl Seat {
     pub fn get_new_item<TRng>(
         &mut self,
         remaining_players: usize,
-        current_table_item_counts: &HashMap<Item, usize>,
+        current_table_item_counts: &IndexMap<Item, usize>,
         rng: &mut TRng,
     ) -> Option<Item>
     where
@@ -167,8 +168,8 @@ fn global_item_limit(item: Item) -> usize {
 fn add_item_to_pool_checked<F>(
     pool: &mut Vec<Item>,
     item: Item,
-    current_table_item_counts: &HashMap<Item, usize>,
-    player_item_counts: &mut HashMap<Item, usize>,
+    current_table_item_counts: &IndexMap<Item, usize>,
+    player_item_counts: &mut IndexMap<Item, usize>,
     additional_check: F,
 ) where
     F: FnOnce() -> bool,

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
+
+use indexmap::IndexMap;
+
+const TOTAL_ITEMS: usize = 9;
 
 // https://github.com/thecatontheceiling/buckshotroulette_multiplayer/blob/aed4aecb7fd7f6cec14a7bd17239e736039915c0/global%20scripts/MP_MatchCustomization.gd#L18
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,8 +50,8 @@ impl Display for Item {
     }
 }
 
-pub fn initialize_item_count_map() -> HashMap<Item, usize> {
-    let mut map = HashMap::with_capacity(9);
+pub fn initialize_item_count_map() -> IndexMap<Item, usize> {
+    let mut map = IndexMap::with_capacity(TOTAL_ITEMS);
     map.insert(Item::Adreneline, 0);
     map.insert(Item::NotAdreneline(NotAdreneline::Jammer), 0);
     map.insert(
@@ -79,5 +83,6 @@ pub fn initialize_item_count_map() -> HashMap<Item, usize> {
         0,
     );
 
+    assert!(map.len() == TOTAL_ITEMS);
     map
 }
