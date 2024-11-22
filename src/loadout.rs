@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use rand::Rng;
 
-use crate::multiplayer_count::MultiplayerCount;
+use crate::{multiplayer_count::MultiplayerCount, LOG_RNG};
 
 pub struct Loadout {
     pub initial_blank_rounds: usize,
@@ -18,10 +18,18 @@ impl Loadout {
         // TODO: Validate shell possiblities
         let total_shells = rng.gen_range(Range { start: 2, end: 9 });
 
+        if LOG_RNG {
+            println!("Generating {} shells", total_shells);
+        }
+
         let initial_live_rounds = rng.gen_range(Range {
             start: 1,
-            end: total_shells - 1,
+            end: total_shells,
         });
+
+        if LOG_RNG {
+            println!("{}/{} live rounds", initial_live_rounds, total_shells);
+        }
 
         let initial_blank_rounds = total_shells - initial_live_rounds;
 
@@ -33,6 +41,9 @@ impl Loadout {
         };
 
         let new_items = rng.gen_range(items_range);
+        if LOG_RNG {
+            println!("{} new items", new_items);
+        }
 
         Loadout {
             initial_blank_rounds,

@@ -12,6 +12,7 @@ use crate::{
     round_player::{RoundPlayer, StunState},
     seat::{OccupiedSeat, SeatView},
     shell::{Shell, ShellType},
+    LOG_RNG,
 };
 
 #[derive(Debug)]
@@ -363,6 +364,10 @@ where
                         start: 2,
                         end: self.shells.len(),
                     });
+
+                    if LOG_RNG {
+                        println!("Phone revealed shell {}", relative_index);
+                    }
 
                     use_result = learn_shell(self.shells, relative_index)
                 }

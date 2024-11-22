@@ -12,3 +12,5 @@ mod round_start_info;
 mod seat;
 mod shell;
 pub mod turn;
+
+pub(crate) const LOG_RNG: bool = cfg!(feature = "print_rng_to_stdout");

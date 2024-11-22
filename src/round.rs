@@ -13,6 +13,7 @@ use crate::{
     seat::Seat,
     shell::{Shell, ShellType, ShotgunDamage},
     turn::{ItemUseResult, TakenTurn, TerminalAction, Turn},
+    LOG_RNG,
 };
 #[derive(Debug, Clone)]
 pub struct Round<TRng> {
@@ -198,11 +199,20 @@ where
         let mut lives_to_load = loadout.initial_live_rounds;
 
         assert!(self.shells.is_empty());
+        if LOG_RNG {
+            println!("Loading shells...");
+        }
         while blanks_to_load > 0 && lives_to_load > 0 {
             if self.rng.gen_bool(0.5) {
+                if LOG_RNG {
+                    println!("Blank");
+                }
                 self.shells.push_back(Shell::new(ShellType::Blank));
                 blanks_to_load -= 1;
             } else {
+                if LOG_RNG {
+                    println!("Live");
+                }
                 self.shells.push_back(Shell::new(ShellType::Live));
                 lives_to_load -= 1;
             }
@@ -210,9 +220,15 @@ where
 
         for _ in 0..blanks_to_load {
             self.shells.push_back(Shell::new(ShellType::Blank));
+            if LOG_RNG {
+                println!("Blank");
+            }
         }
         for _ in 0..lives_to_load {
             self.shells.push_back(Shell::new(ShellType::Live));
+            if LOG_RNG {
+                println!("Live");
+            }
         }
     }
 

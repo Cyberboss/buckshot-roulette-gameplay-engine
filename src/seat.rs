@@ -7,6 +7,7 @@ use crate::{
     player_number::PlayerNumber,
     round_player::{RoundPlayer, StunState},
     shell::{Shell, ShotgunDamage},
+    LOG_RNG,
 };
 
 const MAX_ITEMS: usize = 8;
@@ -120,6 +121,11 @@ impl Seat {
         });
 
         let item = item_pool[index];
+
+        if LOG_RNG {
+            println!("Player {} grabbed item {}", self.player_number, item);
+        }
+
         self.items.push(item);
         Some(item)
     }

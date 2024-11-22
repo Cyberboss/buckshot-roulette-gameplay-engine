@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use rand::Rng;
 
-use crate::{multiplayer_count::MultiplayerCount, player_number::PlayerNumber};
+use crate::{multiplayer_count::MultiplayerCount, player_number::PlayerNumber, LOG_RNG};
 
 #[derive(Debug, Clone)]
 pub struct RoundStartInfo {
@@ -28,6 +28,9 @@ impl RoundStartInfo {
         };
 
         let max_health = rng.gen_range(health_range);
+        if LOG_RNG {
+            println!("{} health this round", max_health);
+        }
 
         RoundStartInfo {
             max_health,
