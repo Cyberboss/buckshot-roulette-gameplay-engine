@@ -67,9 +67,15 @@ pub struct LearnedShell {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct ShotgunRackResult {
+    pub empty: bool,
+    pub ejected_shell_type: ShellType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ItemUseResult {
     Default,
-    ShotgunRackedEmpty,
+    ShotgunRacked(ShotgunRackResult),
     LearnedShell(LearnedShell),
     StunnedPlayer(PlayerNumber),
 }

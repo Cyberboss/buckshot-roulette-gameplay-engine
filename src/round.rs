@@ -244,6 +244,10 @@ where
         &self.seats
     }
 
+    pub fn shell_count(&self) -> usize {
+        self.shells.len()
+    }
+
     fn advance_turn(&mut self) {
         loop {
             let last_seat_index = self.seats.len() - 1;
@@ -303,7 +307,12 @@ where
         match taken_turn.action {
             TerminalAction::Item(item_use_result) => {
                 // need to handle other cases
-                assert!(item_use_result == ItemUseResult::ShotgunRackedEmpty);
+                match item_use_result {
+                    ItemUseResult::ShotgunRacked(shotgun_rack_result) => {
+                        assert!(shotgun_rack_result.empty)
+                    }
+                    _ => panic!("Unhandled terminal action!"),
+                }
 
                 self.new_loadout();
 
