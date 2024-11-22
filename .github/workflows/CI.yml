@@ -57,6 +57,10 @@ jobs:
           files: codecov.json
           fail_ci_if_error: true
 
+      - name: Clean up Codecov Artifacts
+        if: steps.get-tag.outputs.deploy_tag != 'FAILED'
+        run: git clean -fxd
+
       - name: Deploy to crates.io
         if: steps.get-tag.outputs.deploy_tag != 'FAILED'
         uses: katyo/publish-crates@v2
