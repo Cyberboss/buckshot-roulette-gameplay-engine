@@ -76,10 +76,7 @@ impl Seat {
 
     pub fn create_view(&self) -> SeatView {
         SeatView {
-            stun_state: match &self.player {
-                Some(player) => Some(player.stun_state()),
-                None => None,
-            },
+            stun_state: self.player.as_ref().map(|player| player.stun_state()),
             player_number: self.player_number,
             items: self.items.clone(),
         }
@@ -94,9 +91,7 @@ impl Seat {
     where
         TRng: Rng,
     {
-        if self.player.is_none() {
-            return None;
-        }
+        self.player.as_ref()?;
 
         let mut item_pool = Vec::with_capacity(current_table_item_counts.len());
 

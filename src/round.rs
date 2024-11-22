@@ -74,7 +74,7 @@ impl<TRng> FinishedRound<TRng> {
     }
 }
 
-impl<'rng, TRng> Round<TRng>
+impl<TRng> Round<TRng>
 where
     TRng: Rng,
 {
@@ -139,13 +139,10 @@ where
     }
 
     fn check_round_can_continue(&self) {
-        assert!(self.shells.len() == 0);
+        assert!(self.shells.is_empty());
         assert!(
             self.living_players()
-                .map(|seat| {
-                    assert!(seat.player().unwrap().health() > 0);
-                    seat
-                })
+                .inspect(|seat| assert!(seat.player().unwrap().health() > 0))
                 .count()
                 > 1
         );
@@ -185,7 +182,7 @@ where
         let mut blanks_to_load = loadout.initial_blank_rounds;
         let mut lives_to_load = loadout.initial_live_rounds;
 
-        assert!(self.shells.len() == 0);
+        assert!(self.shells.is_empty());
         while blanks_to_load > 0 && lives_to_load > 0 {
             if self.rng.gen_bool(0.5) {
                 self.shells.push_back(Shell::new(ShellType::Blank));
@@ -205,10 +202,7 @@ where
     }
 
     pub fn living_players(&self) -> impl Iterator<Item = &Seat> {
-        self.seats.iter().filter(|&seat| match seat.player() {
-            Some(_) => true,
-            None => false,
-        })
+        self.seats.iter().filter(|&seat| seat.player().is_some())
     }
 
     pub fn seats(&self) -> &Vec<Seat> {
@@ -224,12 +218,10 @@ where
                 } else {
                     self.active_seat_index -= 1;
                 }
+            } else if self.active_seat_index == last_seat_index {
+                self.active_seat_index = 0;
             } else {
-                if self.active_seat_index == last_seat_index {
-                    self.active_seat_index = 0;
-                } else {
-                    self.active_seat_index += 1;
-                }
+                self.active_seat_index += 1;
             }
 
             let seat = self.seats.index_mut(self.active_seat_index);

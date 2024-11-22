@@ -128,7 +128,7 @@ impl<'turn> Turn<'turn> {
         }
     }
     pub fn items(&self) -> &Vec<Item> {
-        &self.inner_turn.owned_data.occupied_seat.items
+        self.inner_turn.owned_data.occupied_seat.items
     }
 
     pub fn other_seats(&self) -> &Vec<SeatView> {
@@ -136,7 +136,7 @@ impl<'turn> Turn<'turn> {
     }
 
     pub fn player(&self) -> &RoundPlayer {
-        &self.inner_turn.owned_data.occupied_seat.player
+        self.inner_turn.owned_data.occupied_seat.player
     }
 
     pub fn turn_order_inverted(&self) -> bool {
@@ -267,7 +267,7 @@ impl<'turn> InnerTurn<'turn> {
         F: FnOnce(&mut Self) -> Result<ItemUseResult, InvalidItemUseError>,
     {
         let index_to_remove = check_item_in_inventory(
-            &self.owned_data.occupied_seat.items,
+            self.owned_data.occupied_seat.items,
             item,
             InvalidItemUseError::NoItem,
         )?;
@@ -352,7 +352,7 @@ impl<'turn> TurnOwnedData<'turn> {
                         end: self.shells.len(),
                     });
 
-                    use_result = learn_shell(&self.shells, relative_index)
+                    use_result = learn_shell(self.shells, relative_index)
                 }
             }
             UnaryItem::Inverter => self.shells[0].invert(),
@@ -367,7 +367,7 @@ impl<'turn> TurnOwnedData<'turn> {
             UnaryItem::Beer => {
                 self.shells.pop_front();
 
-                if self.shells.len() == 0 {
+                if self.shells.is_empty() {
                     use_result = Some(ItemUseResult::ShotgunRackedEmpty);
                 }
             }
@@ -400,7 +400,7 @@ fn learn_shell(shells: &VecDeque<Shell>, relative_index: usize) -> Option<ItemUs
 }
 
 fn check_item_in_inventory(
-    items: &Vec<Item>,
+    items: &[Item],
     target_item: Item,
     error: InvalidItemUseError,
 ) -> Result<usize, InvalidItemUseError> {
