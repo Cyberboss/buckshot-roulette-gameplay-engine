@@ -85,13 +85,15 @@ fn test_phone() {
         Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Phone)),
         42,
         |turn, player_to_shoot| {
+            let shell_count = turn.shell_count();
             let item_use = turn.use_unary_item(UnaryItem::Phone);
             match item_use {
                 TakenAction::Continued(continued_turn) => {
                     match continued_turn.item_result() {
                         Ok(use_result) => match use_result {
-                            ItemUseResult::Default => {}
+                            ItemUseResult::Default => assert!(shell_count <= 2),
                             ItemUseResult::LearnedShell(learned_shell) => {
+                                assert!(shell_count > 2);
                                 assert!(learned_shell.relative_index > 1)
                             }
                             ItemUseResult::ShotgunRackedEmpty | ItemUseResult::StunnedPlayer(_) => {

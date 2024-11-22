@@ -133,6 +133,11 @@ where
             },
         }
     }
+
+    pub fn shell_count(&self) -> usize {
+        self.inner_turn.owned_data.shells.len()
+    }
+
     pub fn items(&self) -> &Vec<Item> {
         self.inner_turn.owned_data.occupied_seat.items
     }
