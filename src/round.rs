@@ -311,15 +311,10 @@ where
                 let mut occupied_seat = target_seat.create_occupied_seat().unwrap();
 
                 let shotgun_damage = occupied_seat.shoot(shell, taken_turn.sawn);
-                let outer_killed;
-                match shotgun_damage {
-                    ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => {
-                        outer_killed = killed;
-                    }
-                    ShotgunDamage::Blank => {
-                        outer_killed = false;
-                    }
-                }
+                let outer_killed = match shotgun_damage {
+                    ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => killed,
+                    ShotgunDamage::Blank => false,
+                };
 
                 let shot_result = Some(ShotResult {
                     target_player: target_player_number,
