@@ -11,3 +11,6 @@ thiserror = "2.0.3"
 [features]
 # Defines a feature named `webp` that does not enable any other features.
 print_rng_to_stdout = []
+
+[dev-dependencies]
+rand_chacha = "0.3.1"
