@@ -16,15 +16,12 @@ where
     let rng: StdRng = StdRng::seed_from_u64(seed);
 
     let mut session: GameSession<StdRng> = GameSession::new(MultiplayerCount::Two, rng);
-    match play_round_shoot_each_other(&mut session, target_item, action) {
-        Some(action) => match play_round_shoot_each_other(&mut session, target_item, action) {
-            Some(action) => match play_round_shoot_each_other(&mut session, target_item, action) {
-                Some(_) => panic!("Current seed never spawned necessary item!"),
-                None => {}
-            },
-            None => {}
-        },
-        None => {}
+    if let Some(action) = play_round_shoot_each_other(&mut session, target_item, action) {
+        if let Some(action) = play_round_shoot_each_other(&mut session, target_item, action) {
+            if play_round_shoot_each_other(&mut session, target_item, action).is_some() {
+                panic!("Current seed never spawned necessary item!");
+            }
+        }
     }
 }
 
