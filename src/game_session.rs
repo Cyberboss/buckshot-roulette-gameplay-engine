@@ -45,7 +45,7 @@ where
         summary_func: SummaryF,
     ) -> Result<TRet>
     where
-        TurnF: FnOnce(Turn) -> TakenTurn,
+        TurnF: FnOnce(Turn<TRng>) -> TakenTurn,
         SummaryF: FnOnce(&TurnSummary<TRng>) -> TRet,
     {
         match self.round.take() {

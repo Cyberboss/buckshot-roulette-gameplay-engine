@@ -1,6 +1,6 @@
 mod game_players;
 pub mod game_session;
-mod item;
+pub mod item;
 mod loadout;
 pub mod multiplayer_count;
 mod player;
@@ -11,4 +11,4 @@ pub mod round_player;
 mod round_start_info;
 mod seat;
 mod shell;
-mod turn;
+pub mod turn;

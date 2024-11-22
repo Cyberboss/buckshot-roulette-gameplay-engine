@@ -15,22 +15,23 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct TurnOwnedData<'turn> {
+struct TurnOwnedData<'turn, TRng> {
     shells: &'turn mut VecDeque<Shell>,
     sawn: bool,
     turn_order_inverted: bool,
     occupied_seat: OccupiedSeat<'turn>,
+    rng: &'turn mut TRng,
 }
 
 #[derive(Debug)]
-struct InnerTurn<'turn> {
+struct InnerTurn<'turn, TRng> {
     other_seats: Vec<SeatView>,
-    owned_data: TurnOwnedData<'turn>,
+    owned_data: TurnOwnedData<'turn, TRng>,
 }
 
 #[derive(Debug)]
-pub struct Turn<'turn> {
-    inner_turn: InnerTurn<'turn>,
+pub struct Turn<'turn, TRng> {
+    inner_turn: InnerTurn<'turn, TRng>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,14 +48,14 @@ pub struct TakenTurn {
 }
 
 #[derive(Debug)]
-pub struct ContinuedTurn<'turn> {
-    inner_turn: InnerTurn<'turn>,
+pub struct ContinuedTurn<'turn, TRng> {
+    inner_turn: InnerTurn<'turn, TRng>,
     item_result: Result<ItemUseResult, InvalidItemUseError>,
 }
 
 #[derive(Debug)]
-pub enum TakenAction<'turn> {
-    Continued(ContinuedTurn<'turn>),
+pub enum TakenAction<'turn, TRng> {
+    Continued(ContinuedTurn<'turn, TRng>),
     Terminal(TakenTurn),
 }
 
@@ -86,12 +87,12 @@ pub enum InvalidItemUseError {
     InvalidStunTarget,
 }
 
-impl<'turn> ContinuedTurn<'turn> {
+impl<'turn, TRng> ContinuedTurn<'turn, TRng> {
     pub fn item_result(&self) -> &Result<ItemUseResult, InvalidItemUseError> {
         &self.item_result
     }
 
-    pub fn next_action(self) -> Turn<'turn> {
+    pub fn next_action(self) -> Turn<'turn, TRng> {
         Turn {
             inner_turn: self.inner_turn,
         }
@@ -109,12 +110,16 @@ impl ItemUseResult {
     }
 }
 
-impl<'turn> Turn<'turn> {
+impl<'turn, TRng> Turn<'turn, TRng>
+where
+    TRng: Rng,
+{
     pub fn new(
         occupied_seat: OccupiedSeat<'turn>,
         other_seats: Vec<SeatView>,
         shells: &'turn mut VecDeque<Shell>,
-    ) -> Turn<'turn> {
+        rng: &'turn mut TRng,
+    ) -> Turn<'turn, TRng> {
         Turn {
             inner_turn: InnerTurn {
                 owned_data: TurnOwnedData {
@@ -122,6 +127,7 @@ impl<'turn> Turn<'turn> {
                     shells,
                     sawn: false,
                     turn_order_inverted: false,
+                    rng,
                 },
                 other_seats,
             },
@@ -155,34 +161,27 @@ impl<'turn> Turn<'turn> {
         }
     }
 
-    pub fn use_unary_item<TRng>(
-        mut self,
-        unary_item: UnaryItem,
-        rng: &mut TRng,
-    ) -> TakenAction<'turn>
+    pub fn use_unary_item(mut self, unary_item: UnaryItem) -> TakenAction<'turn, TRng>
     where
         TRng: Rng,
     {
-        let result = self.inner_turn.use_unary_item(unary_item, rng);
+        let result = self.inner_turn.use_unary_item(unary_item);
         self.convert_to_taken_action(result)
     }
 
-    pub fn use_adreneline<TRng>(
+    pub fn use_adreneline(
         mut self,
         target_player: PlayerNumber,
         target_item: UnaryItem,
-        rng: &mut TRng,
-    ) -> TakenAction<'turn>
+    ) -> TakenAction<'turn, TRng>
     where
         TRng: Rng,
     {
-        let result = self
-            .inner_turn
-            .use_adreneline(target_player, target_item, rng);
+        let result = self.inner_turn.use_adreneline(target_player, target_item);
         self.convert_to_taken_action(result)
     }
 
-    pub fn use_jammer(mut self, target_player: PlayerNumber) -> TakenAction<'turn> {
+    pub fn use_jammer(mut self, target_player: PlayerNumber) -> TakenAction<'turn, TRng> {
         let result = self.inner_turn.use_jammer(target_player);
         self.convert_to_taken_action(result)
     }
@@ -191,7 +190,7 @@ impl<'turn> Turn<'turn> {
         mut self,
         theive_from: PlayerNumber,
         jam_target: PlayerNumber,
-    ) -> TakenAction<'turn> {
+    ) -> TakenAction<'turn, TRng> {
         let result = self
             .inner_turn
             .use_adreneline_then_jammer(theive_from, jam_target);
@@ -201,7 +200,7 @@ impl<'turn> Turn<'turn> {
     fn convert_to_taken_action(
         self,
         mut item_result: Result<ItemUseResult, InvalidItemUseError>,
-    ) -> TakenAction<'turn> {
+    ) -> TakenAction<'turn, TRng> {
         if let Ok(item_use_result) = item_result {
             if item_use_result.is_terminal() {
                 return TakenAction::Terminal(TakenTurn {
@@ -221,23 +220,21 @@ impl<'turn> Turn<'turn> {
     }
 }
 
-impl<'turn> InnerTurn<'turn> {
-    fn use_unary_item<TRng>(
+impl<'turn, TRng> InnerTurn<'turn, TRng>
+where
+    TRng: Rng,
+{
+    fn use_unary_item(
         &mut self,
         unary_item: UnaryItem,
-        rng: &mut TRng,
-    ) -> Result<ItemUseResult, InvalidItemUseError>
-    where
-        TRng: Rng,
-    {
-        self.owned_data.use_unary_item(None, unary_item, rng)
+    ) -> Result<ItemUseResult, InvalidItemUseError> {
+        self.owned_data.use_unary_item(None, unary_item)
     }
 
-    fn use_adreneline<TRng>(
+    fn use_adreneline(
         &mut self,
         target_player: PlayerNumber,
         target_item: UnaryItem,
-        rng: &mut TRng,
     ) -> Result<ItemUseResult, InvalidItemUseError>
     where
         TRng: Rng,
@@ -245,7 +242,7 @@ impl<'turn> InnerTurn<'turn> {
         self.with_adreneline(
             target_player,
             NotAdreneline::UnaryItem(target_item),
-            |seat, owned_data| owned_data.use_unary_item(Some(&mut seat.items), target_item, rng),
+            |seat, owned_data| owned_data.use_unary_item(Some(&mut seat.items), target_item),
         )
     }
 
@@ -296,7 +293,10 @@ impl<'turn> InnerTurn<'turn> {
         func: F,
     ) -> Result<ItemUseResult, InvalidItemUseError>
     where
-        F: FnOnce(&mut SeatView, &mut TurnOwnedData) -> Result<ItemUseResult, InvalidItemUseError>,
+        F: FnOnce(
+            &mut SeatView,
+            &mut TurnOwnedData<TRng>,
+        ) -> Result<ItemUseResult, InvalidItemUseError>,
     {
         self.with_item(Item::Adreneline, |inner_self| {
             match get_opposing_seat(&mut inner_self.other_seats, target_player) {
@@ -329,16 +329,15 @@ impl<'turn> InnerTurn<'turn> {
     }
 }
 
-impl<'turn> TurnOwnedData<'turn> {
-    fn use_unary_item<TRng>(
+impl<'turn, TRng> TurnOwnedData<'turn, TRng>
+where
+    TRng: Rng,
+{
+    fn use_unary_item(
         &mut self,
         other_items: Option<&mut Vec<Item>>,
         unary_item: UnaryItem,
-        rng: &mut TRng,
-    ) -> Result<ItemUseResult, InvalidItemUseError>
-    where
-        TRng: Rng,
-    {
+    ) -> Result<ItemUseResult, InvalidItemUseError> {
         let items = match other_items {
             Some(other_items) => other_items,
             None => &mut self.occupied_seat.items,
@@ -355,7 +354,7 @@ impl<'turn> TurnOwnedData<'turn> {
             UnaryItem::Remote => self.turn_order_inverted = !self.turn_order_inverted,
             UnaryItem::Phone => {
                 if self.shells.len() > 2 {
-                    let relative_index = rng.gen_range(Range {
+                    let relative_index = self.rng.gen_range(Range {
                         start: 2,
                         end: self.shells.len(),
                     });

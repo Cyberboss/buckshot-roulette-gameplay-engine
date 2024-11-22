@@ -255,7 +255,7 @@ where
 
     pub fn with_turn<F>(mut self, func: F) -> TurnSummary<TRng>
     where
-        F: FnOnce(Turn) -> TakenTurn,
+        F: FnOnce(Turn<TRng>) -> TakenTurn,
     {
         assert!(!self.shells.is_empty());
         self.check_round_can_continue();
@@ -276,7 +276,7 @@ where
         let seat = self.seats.index_mut(self.active_seat_index);
 
         let occupied_seat = seat.create_occupied_seat().unwrap();
-        let turn = Turn::new(occupied_seat, other_seats, &mut self.shells);
+        let turn = Turn::new(occupied_seat, other_seats, &mut self.shells, &mut self.rng);
 
         let taken_turn = func(turn);
 
