@@ -8,6 +8,7 @@ use crate::{multiplayer_count::MultiplayerCount, player_number::PlayerNumber};
 pub struct RoundStartInfo {
     max_health: i32,
     starting_player: PlayerNumber,
+    pub player_count: MultiplayerCount,
 }
 
 impl RoundStartInfo {
@@ -31,6 +32,7 @@ impl RoundStartInfo {
         RoundStartInfo {
             max_health,
             starting_player,
+            player_count,
         }
     }
 

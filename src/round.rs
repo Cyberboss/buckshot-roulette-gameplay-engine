@@ -154,7 +154,7 @@ where
     fn new_loadout(&mut self) {
         self.check_round_can_continue();
 
-        let loadout = Loadout::new(&mut self.rng);
+        let loadout = Loadout::new(self.start_info.player_count, &mut self.rng);
 
         let remaining_players = self
             .seats
