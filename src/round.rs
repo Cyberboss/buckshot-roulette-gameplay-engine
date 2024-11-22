@@ -7,6 +7,7 @@ use crate::{
     item::initialize_item_count_map,
     loadout::Loadout,
     player_number::PlayerNumber,
+    round_number::RoundNumber,
     round_player::RoundPlayer,
     round_start_info::RoundStartInfo,
     seat::Seat,
@@ -15,6 +16,7 @@ use crate::{
 };
 #[derive(Debug, Clone)]
 pub struct Round<TRng> {
+    round_number: RoundNumber,
     seats: Vec<Seat>,
     turn_order_reversed: bool,
     active_seat_index: usize,
@@ -72,6 +74,10 @@ impl<TRng> FinishedRound<TRng> {
     pub fn winner(&self) -> PlayerNumber {
         self.winner
     }
+
+    pub fn number(&self) -> RoundNumber {
+        self.round.round_number
+    }
 }
 
 impl<TRng> Round<TRng>
@@ -87,14 +93,21 @@ where
         let player_count = players.len();
         assert!(player_count != 0);
 
+        let round_number;
         let mut rng;
         match round_or_rng {
             FinishedRoundOrRng::FinishedRound(finished_round) => {
+                round_number = match finished_round.number() {
+                    RoundNumber::One => RoundNumber::Two,
+                    RoundNumber::Two => RoundNumber::Three,
+                    RoundNumber::Three => panic!("Attempted to create round from round 3"),
+                };
                 starting_player = finished_round.first_dead_player;
                 rng = finished_round.round.rng;
                 turn_order_reversed = finished_round.round.turn_order_reversed;
             }
             FinishedRoundOrRng::Rng(inital_rng) => {
+                round_number = RoundNumber::One;
                 starting_player = PlayerNumber::One;
                 rng = inital_rng;
                 turn_order_reversed = false;
@@ -120,6 +133,7 @@ where
         let shells = VecDeque::with_capacity(8);
 
         let mut round = Round {
+            round_number,
             first_dead_player: None,
             turn_order_reversed,
             seats,
@@ -134,12 +148,15 @@ where
         round
     }
 
+    pub fn number(&self) -> RoundNumber {
+        self.round_number
+    }
+
     pub fn max_health(&self) -> i32 {
         self.start_info.max_health()
     }
 
     fn check_round_can_continue(&self) {
-        assert!(self.shells.is_empty());
         assert!(
             self.living_players()
                 .inspect(|seat| assert!(seat.player().unwrap().health() > 0))
@@ -149,8 +166,6 @@ where
     }
 
     fn new_loadout(&mut self) {
-        self.check_round_can_continue();
-
         let loadout = Loadout::new(self.start_info.player_count, &mut self.rng);
 
         let remaining_players = self
@@ -205,6 +220,10 @@ where
         self.seats.iter().filter(|&seat| seat.player().is_some())
     }
 
+    pub fn next_player(&self) -> PlayerNumber {
+        self.seats[self.active_seat_index].player_number()
+    }
+
     pub fn seats(&self) -> &Vec<Seat> {
         &self.seats
     }
@@ -238,6 +257,7 @@ where
     where
         F: FnOnce(Turn) -> TakenTurn,
     {
+        assert!(!self.shells.is_empty());
         self.check_round_can_continue();
 
         let other_seats = self
@@ -291,24 +311,49 @@ where
                 let mut occupied_seat = target_seat.create_occupied_seat().unwrap();
 
                 let shotgun_damage = occupied_seat.shoot(shell, taken_turn.sawn);
+                let outer_killed;
                 match shotgun_damage {
                     ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => {
-                        if killed {
-                            if self.first_dead_player.is_none() {
-                                self.first_dead_player = Some(occupied_seat.player.player_number());
-                            }
-
-                            target_seat.empty_dead_body()
-                        }
+                        outer_killed = killed;
                     }
-                    ShotgunDamage::Blank => {}
+                    ShotgunDamage::Blank => {
+                        outer_killed = false;
+                    }
+                }
+
+                let shot_result = Some(ShotResult {
+                    target_player: target_player_number,
+                    damage: shotgun_damage,
+                });
+
+                if outer_killed {
+                    let first_dead_player = self
+                        .first_dead_player
+                        .unwrap_or_else(|| occupied_seat.player.player_number());
+
+                    self.first_dead_player = Some(first_dead_player);
+
+                    target_seat.empty_dead_body();
+
+                    if self.living_players().count() == 1 {
+                        let winner = self.living_players().next().unwrap().player_number();
+                        return TurnSummary {
+                            shot_result,
+                            round_continuation: RoundContinuation::RoundEnds(FinishedRound {
+                                first_dead_player,
+                                winner,
+                                round: self,
+                            }),
+                        };
+                    }
+                }
+
+                if self.shells.is_empty() {
+                    self.new_loadout();
                 }
 
                 TurnSummary {
-                    shot_result: Some(ShotResult {
-                        target_player: target_player_number,
-                        damage: shotgun_damage,
-                    }),
+                    shot_result,
                     round_continuation: self.continue_round(),
                 }
             }

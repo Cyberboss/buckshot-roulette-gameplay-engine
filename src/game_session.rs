@@ -11,7 +11,6 @@ use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct GameSession<TRng> {
-    round_number: RoundNumber,
     round: Option<Round<TRng>>,
     players: GamePlayers,
 }
@@ -30,15 +29,7 @@ where
         let players = GamePlayers::new(multiplayer_count);
         let round = Some(Round::new(&players, FinishedRoundOrRng::Rng(rng)));
 
-        GameSession {
-            round_number: RoundNumber::One,
-            players,
-            round,
-        }
-    }
-
-    pub fn round_number(&self) -> RoundNumber {
-        self.round_number
+        GameSession { players, round }
     }
 
     pub fn round(&self) -> Option<&Round<TRng>> {
@@ -67,16 +58,18 @@ where
                         self.round = Some(continued_round.round)
                     }
                     RoundContinuation::RoundEnds(finished_round) => {
+                        let finished_round_number = finished_round.number();
                         self.players
-                            .register_win(finished_round.winner(), self.round_number)?;
+                            .register_win(finished_round.winner(), finished_round_number)?;
 
-                        if self.round_number == RoundNumber::Three {
-                            self.round = None;
-                        } else {
-                            self.round = Some(Round::new(
-                                &self.players,
-                                FinishedRoundOrRng::FinishedRound(finished_round),
-                            ))
+                        match finished_round_number {
+                            RoundNumber::One | RoundNumber::Two => {
+                                self.round = Some(Round::new(
+                                    &self.players,
+                                    FinishedRoundOrRng::FinishedRound(finished_round),
+                                ))
+                            }
+                            RoundNumber::Three => self.round = None,
                         }
                     }
                 }

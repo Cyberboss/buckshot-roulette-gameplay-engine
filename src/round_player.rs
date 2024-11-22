@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{player::Player, player_number::PlayerNumber, round_start_info::RoundStartInfo};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StunState {
     Unstunned,
     Stunned,
