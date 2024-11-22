@@ -23,6 +23,19 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Check if version is tagged
+        id: get-tag
+        run: |
+          set +ea
+          git describe --exact-match HEAD
+          if [ $? -eq 0 ]; then
+            echo "deploy_tag=$(git describe --exact-match HEAD)" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_tag=FAILED" >> $GITHUB_OUTPUT
+          fi
 
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2
@@ -39,3 +52,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: codecov.json
           fail_ci_if_error: true
+
+      - name: Deploy to crates.io
+        if: steps.get-tag.outputs.deploy_tag != 'FAILED'
+        uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
