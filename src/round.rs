@@ -244,8 +244,8 @@ where
         &self.seats
     }
 
-    pub fn shell_count(&self) -> usize {
-        self.shells.len()
+    pub fn shells(&self) -> &VecDeque<Shell> {
+        &self.shells
     }
 
     fn advance_turn(&mut self) {
