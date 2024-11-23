@@ -42,11 +42,11 @@ where
     pub fn with_turn<TurnF, SummaryF, TRet>(
         &mut self,
         turn_func: TurnF,
-        summary_func: SummaryF,
+        mut summary_func: SummaryF,
     ) -> Result<Option<TRet>>
     where
         TurnF: FnOnce(Turn<TRng>) -> TakenAction<TRng>,
-        SummaryF: FnOnce(&TurnSummary<TRng>) -> TRet,
+        SummaryF: FnMut(&TurnSummary<TRng>) -> TRet,
     {
         match self.round.take() {
             Some(round) => {
