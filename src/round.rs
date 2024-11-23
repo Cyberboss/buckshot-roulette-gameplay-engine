@@ -249,6 +249,10 @@ where
         &self.game_modifiers
     }
 
+    pub fn first_dead_player(&self) -> Option<PlayerNumber> {
+        self.first_dead_player
+    }
+
     fn advance_turn(&mut self) {
         loop {
             let last_seat_index = self.seats.len() - 1;
