@@ -290,9 +290,9 @@ where
         }
     }
 
-    pub fn with_turn<F>(mut self, func: F) -> Option<TurnSummary<TRng>>
+    pub fn with_turn<F>(mut self, mut func: F) -> Option<TurnSummary<TRng>>
     where
-        F: FnOnce(Turn<TRng>) -> TakenAction<TRng>,
+        F: FnMut(Turn<TRng>) -> TakenAction<TRng>,
     {
         assert!(!self.shells.is_empty());
         self.check_round_can_continue();

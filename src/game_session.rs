@@ -45,7 +45,7 @@ where
         mut summary_func: SummaryF,
     ) -> Result<Option<TRet>>
     where
-        TurnF: FnOnce(Turn<TRng>) -> TakenAction<TRng>,
+        TurnF: FnMut(Turn<TRng>) -> TakenAction<TRng>,
         SummaryF: FnMut(&TurnSummary<TRng>) -> TRet,
     {
         match self.round.take() {
