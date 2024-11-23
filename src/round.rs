@@ -12,14 +12,14 @@ use crate::{
     round_start_info::RoundStartInfo,
     seat::Seat,
     shell::{Shell, ShellType, ShotgunDamage},
-    turn::{ItemUseResult, TakenAction, TerminalAction, Turn},
+    turn::{GameModifiers, ItemUseResult, TakenAction, TerminalAction, Turn},
     LOG_RNG,
 };
 #[derive(Debug, Clone)]
 pub struct Round<TRng> {
     round_number: RoundNumber,
     seats: Vec<Seat>,
-    turn_order_reversed: bool,
+    game_modifiers: GameModifiers,
     active_seat_index: usize,
     first_dead_player: Option<PlayerNumber>,
     start_info: RoundStartInfo,
@@ -86,7 +86,6 @@ where
     TRng: Rng,
 {
     pub fn new(game_players: &GamePlayers, round_or_rng: FinishedRoundOrRng<TRng>) -> Self {
-        let turn_order_reversed;
         let starting_player;
 
         let players = game_players.as_vec();
@@ -105,13 +104,11 @@ where
                 };
                 starting_player = finished_round.first_dead_player;
                 rng = finished_round.round.rng;
-                turn_order_reversed = finished_round.round.turn_order_reversed;
             }
             FinishedRoundOrRng::Rng(inital_rng) => {
                 round_number = RoundNumber::One;
                 starting_player = PlayerNumber::One;
                 rng = inital_rng;
-                turn_order_reversed = false;
             }
         }
 
@@ -136,7 +133,7 @@ where
         let mut round = Round {
             round_number,
             first_dead_player: None,
-            turn_order_reversed,
+            game_modifiers: Default::default(),
             seats,
             start_info,
             shells,
@@ -248,10 +245,14 @@ where
         &self.shells
     }
 
+    pub fn game_modifiers(&self) -> &GameModifiers {
+        &self.game_modifiers
+    }
+
     fn advance_turn(&mut self) {
         loop {
             let last_seat_index = self.seats.len() - 1;
-            if self.turn_order_reversed {
+            if self.game_modifiers.turn_order_inverted {
                 if self.active_seat_index == 0 {
                     self.active_seat_index = last_seat_index;
                 } else {
@@ -296,20 +297,28 @@ where
         let seat = self.seats.index_mut(self.active_seat_index);
 
         let occupied_seat = seat.create_occupied_seat().unwrap();
-        let turn = Turn::new(occupied_seat, other_seats, &mut self.shells, &mut self.rng);
+        let turn = Turn::new(
+            occupied_seat,
+            other_seats,
+            &mut self.shells,
+            &mut self.rng,
+            self.game_modifiers.clone(),
+        );
 
         let taken_action = func(turn);
 
         let taken_turn = match taken_action {
-            TakenAction::Continued(_) => {
+            TakenAction::Continued(continued_turn) => {
+                self.game_modifiers = continued_turn.modifiers().clone();
                 return None;
             }
             TakenAction::Terminal(taken_turn) => taken_turn,
         };
 
-        if taken_turn.turn_order_inverted {
-            self.turn_order_reversed = !self.turn_order_reversed;
-        }
+        // unsaw
+        let was_sawn = taken_turn.modifiers.shotgun_sawn;
+        self.game_modifiers = taken_turn.modifiers;
+        self.game_modifiers.shotgun_sawn = false;
 
         match taken_turn.action {
             TerminalAction::Item(item_use_result) => {
@@ -342,7 +351,7 @@ where
 
                 let mut occupied_seat = target_seat.create_occupied_seat().unwrap();
 
-                let shotgun_damage = occupied_seat.shoot(shell, taken_turn.sawn);
+                let shotgun_damage = occupied_seat.shoot(shell, was_sawn);
                 let outer_killed = match shotgun_damage {
                     ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => killed,
                     ShotgunDamage::Blank => false,

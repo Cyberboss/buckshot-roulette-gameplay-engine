@@ -18,8 +18,7 @@ use crate::{
 #[derive(Debug)]
 struct TurnOwnedData<'turn, TRng> {
     shells: &'turn mut VecDeque<Shell>,
-    sawn: bool,
-    turn_order_inverted: bool,
+    modifiers: GameModifiers,
     occupied_seat: OccupiedSeat<'turn>,
     rng: &'turn mut TRng,
 }
@@ -41,11 +40,16 @@ pub enum TerminalAction {
     Shot(PlayerNumber),
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct GameModifiers {
+    pub shotgun_sawn: bool,
+    pub turn_order_inverted: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct TakenTurn {
     pub action: TerminalAction,
-    pub sawn: bool,
-    pub turn_order_inverted: bool,
+    pub modifiers: GameModifiers,
 }
 
 #[derive(Debug)]
@@ -104,6 +108,10 @@ impl<'turn, TRng> ContinuedTurn<'turn, TRng> {
             inner_turn: self.inner_turn,
         }
     }
+
+    pub fn modifiers(&self) -> &GameModifiers {
+        &self.inner_turn.owned_data.modifiers
+    }
 }
 
 impl ItemUseResult {
@@ -126,14 +134,14 @@ where
         other_seats: Vec<SeatView>,
         shells: &'turn mut VecDeque<Shell>,
         rng: &'turn mut TRng,
+        modifiers: GameModifiers,
     ) -> Turn<'turn, TRng> {
         Turn {
             inner_turn: InnerTurn {
                 owned_data: TurnOwnedData {
                     occupied_seat,
                     shells,
-                    sawn: false,
-                    turn_order_inverted: false,
+                    modifiers,
                     rng,
                 },
                 other_seats,
@@ -157,19 +165,14 @@ where
         self.inner_turn.owned_data.occupied_seat.player
     }
 
-    pub fn turn_order_inverted(&self) -> bool {
-        self.inner_turn.owned_data.turn_order_inverted
-    }
-
-    pub fn sawn(&self) -> bool {
-        self.inner_turn.owned_data.sawn
+    pub fn modifiers(&self) -> &GameModifiers {
+        &self.inner_turn.owned_data.modifiers
     }
 
     pub fn shoot(self, target: PlayerNumber) -> TakenAction<'turn, TRng> {
         TakenAction::Terminal(TakenTurn {
             action: TerminalAction::Shot(target),
-            sawn: self.sawn(),
-            turn_order_inverted: self.turn_order_inverted(),
+            modifiers: self.inner_turn.owned_data.modifiers,
         })
     }
 
@@ -217,8 +220,7 @@ where
             if item_use_result.is_terminal() {
                 return TakenAction::Terminal(TakenTurn {
                     action: TerminalAction::Item(item_use_result),
-                    sawn: self.inner_turn.owned_data.sawn,
-                    turn_order_inverted: self.inner_turn.owned_data.turn_order_inverted,
+                    modifiers: self.inner_turn.owned_data.modifiers,
                 });
             }
 
@@ -363,7 +365,9 @@ where
 
         let mut use_result = None;
         match unary_item {
-            UnaryItem::Remote => self.turn_order_inverted = !self.turn_order_inverted,
+            UnaryItem::Remote => {
+                self.modifiers.turn_order_inverted = !self.modifiers.turn_order_inverted
+            }
             UnaryItem::Phone => {
                 if self.shells.len() > 2 {
                     let relative_index = self.rng.gen_range(Range {
@@ -382,10 +386,10 @@ where
             UnaryItem::MagnifyingGlass => use_result = learn_shell(self.shells, 0),
             UnaryItem::Cigarettes => self.occupied_seat.player.gain_health(1),
             UnaryItem::Handsaw => {
-                if self.sawn {
+                if self.modifiers.shotgun_sawn {
                     return Err(InvalidItemUseError::DoubleSaw);
                 }
-                self.sawn = true;
+                self.modifiers.shotgun_sawn = true;
             }
             UnaryItem::Beer => {
                 let ejected_shell = self.shells.pop_front().unwrap();
