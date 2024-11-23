@@ -3,7 +3,7 @@ use crate::{
     multiplayer_count::MultiplayerCount,
     round::{FinishedRoundOrRng, Round, RoundContinuation, TurnSummary},
     round_number::RoundNumber,
-    turn::{TakenTurn, Turn},
+    turn::{TakenAction, Turn},
 };
 use anyhow::Result;
 use rand::Rng;
@@ -43,14 +43,19 @@ where
         &mut self,
         turn_func: TurnF,
         summary_func: SummaryF,
-    ) -> Result<TRet>
+    ) -> Result<Option<TRet>>
     where
-        TurnF: FnOnce(Turn<TRng>) -> TakenTurn,
+        TurnF: FnOnce(Turn<TRng>) -> TakenAction<TRng>,
         SummaryF: FnOnce(&TurnSummary<TRng>) -> TRet,
     {
         match self.round.take() {
             Some(round) => {
-                let turn_summary = round.with_turn(turn_func);
+                let turn_summary_option = round.with_turn(turn_func);
+                let turn_summary = match turn_summary_option {
+                    Some(turn_summary) => turn_summary,
+                    None => return Ok(None),
+                };
+
                 let result = summary_func(&turn_summary);
 
                 match turn_summary.round_continuation {
@@ -74,7 +79,7 @@ where
                     }
                 }
 
-                Ok(result)
+                Ok(Some(result))
             }
             None => Err(NoRoundError::NoRound)?,
         }

@@ -12,7 +12,7 @@ use crate::{
     round_start_info::RoundStartInfo,
     seat::Seat,
     shell::{Shell, ShellType, ShotgunDamage},
-    turn::{ItemUseResult, TakenTurn, TerminalAction, Turn},
+    turn::{ItemUseResult, TakenAction, TerminalAction, Turn},
     LOG_RNG,
 };
 #[derive(Debug, Clone)]
@@ -273,9 +273,9 @@ where
         }
     }
 
-    pub fn with_turn<F>(mut self, func: F) -> TurnSummary<TRng>
+    pub fn with_turn<F>(mut self, func: F) -> Option<TurnSummary<TRng>>
     where
-        F: FnOnce(Turn<TRng>) -> TakenTurn,
+        F: FnOnce(Turn<TRng>) -> TakenAction<TRng>,
     {
         assert!(!self.shells.is_empty());
         self.check_round_can_continue();
@@ -298,7 +298,14 @@ where
         let occupied_seat = seat.create_occupied_seat().unwrap();
         let turn = Turn::new(occupied_seat, other_seats, &mut self.shells, &mut self.rng);
 
-        let taken_turn = func(turn);
+        let taken_action = func(turn);
+
+        let taken_turn = match taken_action {
+            TakenAction::Continued(_) => {
+                return None;
+            }
+            TakenAction::Terminal(taken_turn) => taken_turn,
+        };
 
         if taken_turn.turn_order_inverted {
             self.turn_order_reversed = !self.turn_order_reversed;
@@ -316,10 +323,10 @@ where
 
                 self.new_loadout();
 
-                TurnSummary {
+                Some(TurnSummary {
                     shot_result: None,
                     round_continuation: self.continue_round(),
-                }
+                })
             }
             TerminalAction::Shot(target_player_number) => {
                 let shell = self.shells.pop_front().unwrap();
@@ -357,14 +364,14 @@ where
 
                     if self.living_players().count() == 1 {
                         let winner = self.living_players().next().unwrap().player_number();
-                        return TurnSummary {
+                        return Some(TurnSummary {
                             shot_result,
                             round_continuation: RoundContinuation::RoundEnds(FinishedRound {
                                 first_dead_player,
                                 winner,
                                 round: self,
                             }),
-                        };
+                        });
                     }
                 }
 
@@ -372,10 +379,10 @@ where
                     self.new_loadout();
                 }
 
-                TurnSummary {
+                Some(TurnSummary {
                     shot_result,
                     round_continuation: self.continue_round(),
-                }
+                })
             }
         }
     }

@@ -165,12 +165,12 @@ where
         self.inner_turn.owned_data.sawn
     }
 
-    pub fn shoot(self, target: PlayerNumber) -> TakenTurn {
-        TakenTurn {
+    pub fn shoot(self, target: PlayerNumber) -> TakenAction<'turn, TRng> {
+        TakenAction::Terminal(TakenTurn {
             action: TerminalAction::Shot(target),
             sawn: self.sawn(),
             turn_order_inverted: self.turn_order_inverted(),
-        }
+        })
     }
 
     pub fn use_unary_item(mut self, unary_item: UnaryItem) -> TakenAction<'turn, TRng>
