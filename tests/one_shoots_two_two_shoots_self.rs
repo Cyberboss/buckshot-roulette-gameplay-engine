@@ -21,14 +21,14 @@ fn play_round_one_shoots_two_two_shoots_self(
     round_number: RoundNumber,
 ) {
     let mut won_round = false;
-    for _ in 0..100 {
+    for i in 0..100 {
         assert!(session.round().unwrap().number() == round_number);
         {
             let round = session.round().unwrap();
 
             let living_players = round.living_players().count();
             assert!(living_players == 2);
-            if round_number == RoundNumber::One {
+            if round_number == RoundNumber::One && i == 0 {
                 assert!(round.next_player() == PlayerNumber::One);
             }
 

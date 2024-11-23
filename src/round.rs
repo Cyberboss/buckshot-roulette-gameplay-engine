@@ -253,7 +253,8 @@ where
         self.first_dead_player
     }
 
-    fn advance_turn(&mut self) {
+    /// Advances to next alive character to play, considering and updating stun states. Returns next_player()
+    fn advance_turn(&mut self) -> PlayerNumber {
         loop {
             let last_seat_index = self.seats.len() - 1;
             if self.game_modifiers.turn_order_inverted {
@@ -272,7 +273,7 @@ where
 
             if let Some(occupied_seat) = seat.create_occupied_seat() {
                 if occupied_seat.player.update_stunned() {
-                    break;
+                    return occupied_seat.player.player_number();
                 }
             }
         }
@@ -299,6 +300,7 @@ where
             .collect();
 
         let seat = self.seats.index_mut(self.active_seat_index);
+        let shooting_player = seat.player_number();
 
         let occupied_seat = seat.create_occupied_seat().unwrap();
         let turn = Turn::new(
@@ -335,10 +337,15 @@ where
                 }
 
                 self.new_loadout();
+                let next_player = self.advance_turn();
+                let round_continuation = RoundContinuation::RoundContinues(ContinuedRound {
+                    turn_continuation: TurnContinuation::LoadoutEnds(next_player),
+                    round: self,
+                });
 
                 Some(TurnSummary {
                     shot_result: None,
-                    round_continuation: self.continue_round(),
+                    round_continuation,
                 })
             }
             TerminalAction::Shot(target_player_number) => {
@@ -356,9 +363,16 @@ where
                 let mut occupied_seat = target_seat.create_occupied_seat().unwrap();
 
                 let shotgun_damage = occupied_seat.shoot(shell, was_sawn);
+                let advance_turn;
                 let outer_killed = match shotgun_damage {
-                    ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => killed,
-                    ShotgunDamage::Blank => false,
+                    ShotgunDamage::RegularShot(killed) | ShotgunDamage::SawedShot(killed) => {
+                        advance_turn = true;
+                        killed
+                    }
+                    ShotgunDamage::Blank => {
+                        advance_turn = target_player_number != shooting_player;
+                        false
+                    }
                 };
 
                 let shot_result = Some(ShotResult {
@@ -388,28 +402,29 @@ where
                     }
                 }
 
-                if self.shells.is_empty() {
-                    self.new_loadout();
-                }
+                let new_loadout = self.shells().is_empty();
+
+                let next_player = if advance_turn {
+                    self.advance_turn()
+                } else {
+                    shooting_player
+                };
+
+                let round_continuation = RoundContinuation::RoundContinues(ContinuedRound {
+                    turn_continuation: if new_loadout {
+                        self.new_loadout();
+                        TurnContinuation::LoadoutEnds(next_player)
+                    } else {
+                        TurnContinuation::LoadoutContinues
+                    },
+                    round: self,
+                });
 
                 Some(TurnSummary {
                     shot_result,
-                    round_continuation: self.continue_round(),
+                    round_continuation,
                 })
             }
         }
-    }
-
-    fn continue_round(mut self) -> RoundContinuation<TRng> {
-        self.advance_turn();
-        RoundContinuation::RoundContinues(ContinuedRound {
-            turn_continuation: TurnContinuation::LoadoutEnds(
-                self.seats[self.active_seat_index]
-                    .player()
-                    .unwrap()
-                    .player_number(),
-            ),
-            round: self,
-        })
     }
 }
