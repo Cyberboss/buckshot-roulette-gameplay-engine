@@ -5,7 +5,7 @@ use rand::Rng;
 use crate::{
     game_players::GamePlayers,
     item::initialize_item_count_map,
-    loadout::{self, Loadout},
+    loadout::Loadout,
     player_number::PlayerNumber,
     round_number::RoundNumber,
     round_player::RoundPlayer,
