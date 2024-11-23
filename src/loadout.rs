@@ -10,6 +10,7 @@ struct Sequence {
     num_blank: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct Loadout {
     pub initial_blank_rounds: usize,
     pub initial_live_rounds: usize,

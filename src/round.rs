@@ -5,7 +5,7 @@ use rand::Rng;
 use crate::{
     game_players::GamePlayers,
     item::initialize_item_count_map,
-    loadout::Loadout,
+    loadout::{self, Loadout},
     player_number::PlayerNumber,
     round_number::RoundNumber,
     round_player::RoundPlayer,
@@ -23,6 +23,7 @@ pub struct Round<TRng> {
     active_seat_index: usize,
     first_dead_player: Option<PlayerNumber>,
     start_info: RoundStartInfo,
+    loadout: Loadout,
     shells: VecDeque<Shell>,
     rng: TRng,
 }
@@ -130,6 +131,7 @@ where
 
         let shells = VecDeque::with_capacity(8);
 
+        let loadout = Loadout::new(start_info.player_count, &mut rng);
         let mut round = Round {
             round_number,
             first_dead_player: None,
@@ -139,9 +141,10 @@ where
             shells,
             rng,
             active_seat_index: turn_index,
+            loadout,
         };
 
-        round.new_loadout();
+        round.new_loadout(true);
 
         round
     }
@@ -163,8 +166,12 @@ where
         );
     }
 
-    fn new_loadout(&mut self) {
-        let loadout = Loadout::new(self.start_info.player_count, &mut self.rng);
+    fn new_loadout(&mut self, pre_generated: bool) {
+        if !pre_generated {
+            self.loadout = Loadout::new(self.start_info.player_count, &mut self.rng)
+        };
+
+        let loadout = &mut self.loadout;
 
         let remaining_players = self
             .seats
@@ -227,6 +234,10 @@ where
                 println!("Live");
             }
         }
+    }
+
+    pub fn loadout(&self) -> &Loadout {
+        &self.loadout
     }
 
     pub fn living_players(&self) -> impl Iterator<Item = &Seat> {
@@ -336,7 +347,7 @@ where
                     _ => panic!("Unhandled terminal action!"),
                 }
 
-                self.new_loadout();
+                self.new_loadout(false);
                 let next_player = self.advance_turn();
                 let round_continuation = RoundContinuation::RoundContinues(ContinuedRound {
                     turn_continuation: TurnContinuation::LoadoutEnds(next_player),
@@ -412,7 +423,7 @@ where
 
                 let round_continuation = RoundContinuation::RoundContinues(ContinuedRound {
                     turn_continuation: if new_loadout {
-                        self.new_loadout();
+                        self.new_loadout(false);
                         TurnContinuation::LoadoutEnds(next_player)
                     } else {
                         TurnContinuation::LoadoutContinues
