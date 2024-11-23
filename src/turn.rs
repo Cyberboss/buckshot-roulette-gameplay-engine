@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    ops::{IndexMut, Range},
-};
+use std::{collections::VecDeque, ops::IndexMut};
 
 use rand::Rng;
 use thiserror::Error;
@@ -370,10 +367,7 @@ where
             }
             UnaryItem::Phone => {
                 if self.shells.len() > 2 {
-                    let relative_index = self.rng.gen_range(Range {
-                        start: 2,
-                        end: self.shells.len(),
-                    });
+                    let relative_index = self.rng.gen_range(2, self.shells.len());
 
                     if LOG_RNG {
                         println!("Phone revealed shell {}", relative_index);

@@ -2,14 +2,13 @@ use buckshot_roulette_gameplay_engine::{
     game_session::GameSession, multiplayer_count::MultiplayerCount, player_number::PlayerNumber,
     round::RoundContinuation, round_number::RoundNumber, round_player::StunState,
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
+use rand::{rngs::StdRng, SeedableRng};
 
 #[test]
 fn one_shoots_two_two_shoots_self() {
-    let rng: ChaCha8Rng = ChaCha8Rng::seed_from_u64(42);
+    let rng: StdRng = StdRng::seed_from_u64(42);
 
-    let mut session: GameSession<ChaCha8Rng> = GameSession::new(MultiplayerCount::Two, rng);
+    let mut session: GameSession<StdRng> = GameSession::new(MultiplayerCount::Two, rng);
     play_round_one_shoots_two_two_shoots_self(&mut session, RoundNumber::One);
     play_round_one_shoots_two_two_shoots_self(&mut session, RoundNumber::Two);
     play_round_one_shoots_two_two_shoots_self(&mut session, RoundNumber::Three);
@@ -18,7 +17,7 @@ fn one_shoots_two_two_shoots_self() {
 }
 
 fn play_round_one_shoots_two_two_shoots_self(
-    session: &mut GameSession<ChaCha8Rng>,
+    session: &mut GameSession<StdRng>,
     round_number: RoundNumber,
 ) {
     let mut won_round = false;
@@ -95,7 +94,7 @@ fn play_round_one_shoots_two_two_shoots_self(
     assert!(won_round)
 }
 
-fn check_round_win(session: &GameSession<ChaCha8Rng>, round_number: RoundNumber) {
+fn check_round_win(session: &GameSession<StdRng>, round_number: RoundNumber) {
     let player_one = session.players().as_vec()[0];
     match round_number {
         RoundNumber::One => {

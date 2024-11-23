@@ -6,17 +6,16 @@ use buckshot_roulette_gameplay_engine::{
     round::RoundContinuation,
     turn::{ItemUseResult, TakenAction, Turn},
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
+use rand::{rngs::StdRng, SeedableRng};
 
 /// Shoot each other in a two player scenario until an item is available
 fn item_test_core<F>(target_item: Item, seed: u64, action: F)
 where
-    F: FnOnce(Turn<ChaCha8Rng>, PlayerNumber) -> TakenAction<ChaCha8Rng>,
+    F: FnOnce(Turn<StdRng>, PlayerNumber) -> TakenAction<StdRng>,
 {
-    let rng: ChaCha8Rng = ChaCha8Rng::seed_from_u64(seed);
+    let rng: StdRng = StdRng::seed_from_u64(seed);
 
-    let mut session: GameSession<ChaCha8Rng> = GameSession::new(MultiplayerCount::Two, rng);
+    let mut session: GameSession<StdRng> = GameSession::new(MultiplayerCount::Two, rng);
     if let Some(action) = play_round_shoot_each_other(&mut session, target_item, action) {
         if let Some(action) = play_round_shoot_each_other(&mut session, target_item, action) {
             if play_round_shoot_each_other(&mut session, target_item, action).is_some() {
@@ -27,12 +26,12 @@ where
 }
 
 fn play_round_shoot_each_other<F>(
-    session: &mut GameSession<ChaCha8Rng>,
+    session: &mut GameSession<StdRng>,
     target_item: Item,
     action: F,
 ) -> Option<F>
 where
-    F: FnOnce(Turn<ChaCha8Rng>, PlayerNumber) -> TakenAction<ChaCha8Rng>,
+    F: FnOnce(Turn<StdRng>, PlayerNumber) -> TakenAction<StdRng>,
 {
     let mut action_option = Some(action);
     for _ in 0..100 {

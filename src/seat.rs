@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use indexmap::IndexMap;
 use rand::Rng;
 
@@ -116,10 +114,7 @@ impl Seat {
             )
         });
 
-        let index = rng.gen_range(Range {
-            start: 0,
-            end: item_pool.len(),
-        });
+        let index = rng.gen_range(0, item_pool.len());
 
         let item = item_pool[index];
 

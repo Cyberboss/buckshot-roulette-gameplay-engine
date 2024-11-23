@@ -1,14 +1,13 @@
 use buckshot_roulette_gameplay_engine::{
     game_session::GameSession, multiplayer_count::MultiplayerCount, round::RoundContinuation,
 };
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
+use rand::{rngs::StdRng, SeedableRng};
 
 #[test]
 fn all_four_shoot_self() {
-    let rng: ChaCha8Rng = ChaCha8Rng::seed_from_u64(42);
+    let rng: StdRng = StdRng::seed_from_u64(42);
 
-    let mut session: GameSession<ChaCha8Rng> = GameSession::new(MultiplayerCount::Four, rng);
+    let mut session: GameSession<StdRng> = GameSession::new(MultiplayerCount::Four, rng);
     play_round_one_shoots_two_two_shoots_self(&mut session);
     play_round_one_shoots_two_two_shoots_self(&mut session);
     play_round_one_shoots_two_two_shoots_self(&mut session);
@@ -16,7 +15,7 @@ fn all_four_shoot_self() {
     assert!(session.round().is_none());
 }
 
-fn play_round_one_shoots_two_two_shoots_self(session: &mut GameSession<ChaCha8Rng>) {
+fn play_round_one_shoots_two_two_shoots_self(session: &mut GameSession<StdRng>) {
     let mut won_round = false;
     for _ in 0..100 {
         let current_player = session.round().unwrap().next_player();

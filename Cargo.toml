@@ -11,11 +11,8 @@ readme = "README.md"
 [dependencies]
 anyhow = "1.0.93"
 indexmap = "2.6.0"
-rand = "0.8.5"
+rand = "0.7"
 thiserror = "2.0.3"
 
 [features]
 print_rng_to_stdout = []
-
-[dev-dependencies]
-rand_chacha = "0.3.1"
