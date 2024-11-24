@@ -72,6 +72,12 @@ pub enum FinishedRoundOrRng<TRng> {
     Rng(TRng),
 }
 
+#[derive(Debug, Clone)]
+pub enum TurnSummaryOrRound<TRng> {
+    TurnSummary(TurnSummary<TRng>),
+    Round(Round<TRng>),
+}
+
 impl<TRng> FinishedRound<TRng> {
     pub fn winner(&self) -> PlayerNumber {
         self.winner
@@ -290,7 +296,7 @@ where
         }
     }
 
-    pub fn with_turn<F>(mut self, mut func: F) -> Option<TurnSummary<TRng>>
+    pub fn with_turn<F>(mut self, mut func: F) -> TurnSummaryOrRound<TRng>
     where
         F: FnMut(Turn<TRng>) -> TakenAction<TRng>,
     {
@@ -327,7 +333,7 @@ where
         let taken_turn = match taken_action {
             TakenAction::Continued(continued_turn) => {
                 self.game_modifiers = continued_turn.modifiers().clone();
-                return None;
+                return TurnSummaryOrRound::Round(self);
             }
             TakenAction::Terminal(taken_turn) => taken_turn,
         };
@@ -356,7 +362,7 @@ where
                     round: self,
                 });
 
-                Some(TurnSummary {
+                TurnSummaryOrRound::TurnSummary(TurnSummary {
                     shot_result: None,
                     round_continuation,
                 })
@@ -404,7 +410,7 @@ where
 
                     if self.living_players().count() == 1 {
                         let winner = self.living_players().next().unwrap().player_number();
-                        return Some(TurnSummary {
+                        return TurnSummaryOrRound::TurnSummary(TurnSummary {
                             shot_result,
                             round_continuation: RoundContinuation::RoundEnds(FinishedRound {
                                 first_dead_player,
@@ -433,7 +439,7 @@ where
                     round: self,
                 });
 
-                Some(TurnSummary {
+                TurnSummaryOrRound::TurnSummary(TurnSummary {
                     shot_result,
                     round_continuation,
                 })

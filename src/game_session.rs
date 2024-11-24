@@ -1,7 +1,7 @@
 use crate::{
     game_players::GamePlayers,
     multiplayer_count::MultiplayerCount,
-    round::{FinishedRoundOrRng, Round, RoundContinuation, TurnSummary},
+    round::{FinishedRoundOrRng, Round, RoundContinuation, TurnSummary, TurnSummaryOrRound},
     round_number::RoundNumber,
     turn::{TakenAction, Turn},
 };
@@ -52,8 +52,11 @@ where
             Some(round) => {
                 let turn_summary_option = round.with_turn(turn_func);
                 let turn_summary = match turn_summary_option {
-                    Some(turn_summary) => turn_summary,
-                    None => return Ok(None),
+                    TurnSummaryOrRound::TurnSummary(turn_summary) => turn_summary,
+                    TurnSummaryOrRound::Round(round) => {
+                        self.round = Some(round);
+                        return Ok(None);
+                    }
                 };
 
                 let result = summary_func(&turn_summary);
