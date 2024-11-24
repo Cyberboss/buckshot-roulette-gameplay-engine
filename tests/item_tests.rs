@@ -143,3 +143,45 @@ fn test_beer() {
         },
     );
 }
+
+#[test]
+fn test_cigs() {
+    let mut healed_once = false;
+    item_test_core(
+        Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Cigarettes)),
+        42,
+        |turn, player_to_shoot| {
+            let prior_health = turn.player().health();
+            let item_use = turn.use_unary_item(UnaryItem::Cigarettes);
+            match item_use {
+                TakenAction::Continued(continued_turn) => {
+                    match continued_turn.item_result() {
+                        Ok(use_result) => match use_result {
+                            ItemUseResult::Default => {}
+                            ItemUseResult::LearnedShell(_)
+                            | ItemUseResult::StunnedPlayer(_)
+                            | ItemUseResult::ShotgunRacked(_) => {
+                                panic!("Shouldn't be possible with beer")
+                            }
+                        },
+                        Err(_) => panic!("Cigs should never have a bad use result"),
+                    }
+
+                    let next_action = continued_turn.next_action();
+
+                    assert!(prior_health <= next_action.player().health());
+                    if prior_health < next_action.player().health() {
+                        healed_once = true;
+                    }
+
+                    next_action.shoot(player_to_shoot)
+                }
+                TakenAction::Terminal(_) => {
+                    panic!("Cigs shouldn't be a terminal action")
+                }
+            }
+        },
+    );
+
+    assert!(healed_once);
+}
