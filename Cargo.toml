@@ -1,6 +1,6 @@
 [package]
 name = "buckshot-roulette-gameplay-engine"
-version = "5.5.0"
+version = "6.0.0"
 edition = "2021"
 
 repository = "https://github.com/Cyberboss/buckshot-roulette-gameplay-engine"
