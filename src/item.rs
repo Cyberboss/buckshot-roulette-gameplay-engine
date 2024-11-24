@@ -52,6 +52,18 @@ impl Display for Item {
     }
 }
 
+pub static ALL_ITEMS: [Item; TOTAL_ITEMS] = [
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Remote)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Phone)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Inverter)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::MagnifyingGlass)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Cigarettes)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Handsaw)),
+    Item::NotAdreneline(NotAdreneline::UnaryItem(UnaryItem::Beer)),
+    Item::NotAdreneline(NotAdreneline::Jammer),
+    Item::Adreneline,
+];
+
 pub fn initialize_item_count_map() -> IndexMap<Item, usize> {
     let mut map = IndexMap::with_capacity(TOTAL_ITEMS);
     map.insert(
@@ -88,4 +100,37 @@ pub fn initialize_item_count_map() -> IndexMap<Item, usize> {
 
     assert!(map.len() == TOTAL_ITEMS);
     map
+}
+
+pub fn global_item_limit(item: Item) -> usize {
+    match item {
+        Item::NotAdreneline(not_adreneline) => match not_adreneline {
+            NotAdreneline::UnaryItem(unary_item) => match unary_item {
+                UnaryItem::Remote => 2,
+                UnaryItem::Phone
+                | UnaryItem::Inverter
+                | UnaryItem::MagnifyingGlass
+                | UnaryItem::Cigarettes
+                | UnaryItem::Handsaw
+                | UnaryItem::Beer => 32,
+            },
+            NotAdreneline::Jammer => 1,
+        },
+        Item::Adreneline => 32,
+    }
+}
+
+pub fn player_item_limit(item: Item) -> usize {
+    match item {
+        Item::NotAdreneline(not_adreneline) => match not_adreneline {
+            NotAdreneline::UnaryItem(unary_item) => match unary_item {
+                UnaryItem::Remote | UnaryItem::Cigarettes => 1,
+                UnaryItem::MagnifyingGlass | UnaryItem::Handsaw => 2,
+                UnaryItem::Inverter => 4,
+                UnaryItem::Phone | UnaryItem::Beer => 8,
+            },
+            NotAdreneline::Jammer => 1,
+        },
+        Item::Adreneline => 4,
+    }
 }

@@ -2,7 +2,10 @@ use indexmap::IndexMap;
 use rand::Rng;
 
 use crate::{
-    item::{initialize_item_count_map, Item, NotAdreneline, UnaryItem},
+    item::{
+        global_item_limit, initialize_item_count_map, player_item_limit, Item, NotAdreneline,
+        UnaryItem,
+    },
     player_number::PlayerNumber,
     round_player::{RoundPlayer, StunState},
     shell::{Shell, ShotgunDamage},
@@ -142,24 +145,6 @@ impl<'seat> OccupiedSeat<'seat> {
     }
 }
 
-fn global_item_limit(item: Item) -> usize {
-    match item {
-        Item::NotAdreneline(not_adreneline) => match not_adreneline {
-            NotAdreneline::UnaryItem(unary_item) => match unary_item {
-                UnaryItem::Remote => 2,
-                UnaryItem::Phone
-                | UnaryItem::Inverter
-                | UnaryItem::MagnifyingGlass
-                | UnaryItem::Cigarettes
-                | UnaryItem::Handsaw
-                | UnaryItem::Beer => 32,
-            },
-            NotAdreneline::Jammer => 1,
-        },
-        Item::Adreneline => 32,
-    }
-}
-
 fn add_item_to_pool_checked<F>(
     pool: &mut Vec<Item>,
     item: Item,
@@ -186,19 +171,4 @@ fn add_item_to_pool_checked<F>(
     }
 
     pool.push(item);
-}
-
-fn player_item_limit(item: Item) -> usize {
-    match item {
-        Item::NotAdreneline(not_adreneline) => match not_adreneline {
-            NotAdreneline::UnaryItem(unary_item) => match unary_item {
-                UnaryItem::Remote | UnaryItem::Cigarettes => 1,
-                UnaryItem::MagnifyingGlass | UnaryItem::Handsaw => 2,
-                UnaryItem::Inverter => 4,
-                UnaryItem::Phone | UnaryItem::Beer => 8,
-            },
-            NotAdreneline::Jammer => 1,
-        },
-        Item::Adreneline => 4,
-    }
 }
