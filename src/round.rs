@@ -344,7 +344,9 @@ where
                     ItemUseResult::ShotgunRacked(shotgun_rack_result) => {
                         assert!(shotgun_rack_result.empty)
                     }
-                    _ => panic!("Unhandled terminal action!"),
+                    ItemUseResult::Default
+                    | ItemUseResult::LearnedShell(_)
+                    | ItemUseResult::StunnedPlayer(_) => unreachable!("The only terminal action for item use should be racking the shotgun empty!"),
                 }
 
                 self.new_loadout(false);
